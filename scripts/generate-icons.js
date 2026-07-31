@@ -1,96 +1,20 @@
 import sharp from 'sharp';
-import fs from 'fs';
 import path from 'path';
-
-const svgBuffer = Buffer.from(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a"/>
-      <stop offset="50%" stop-color="#1e1b4b"/>
-      <stop offset="100%" stop-color="#0f172a"/>
-    </linearGradient>
-    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fbbf24"/>
-      <stop offset="100%" stop-color="#d97706"/>
-    </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="8" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-    </filter>
-  </defs>
-  
-  <!-- Background -->
-  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
-  
-  <!-- Inner Border Ring -->
-  <rect x="20" y="20" width="472" height="472" rx="94" fill="none" stroke="url(#gold)" stroke-width="8" stroke-opacity="0.4"/>
-  
-  <!-- Center Glow Circle -->
-  <circle cx="256" cy="256" r="180" fill="#f59e0b" fill-opacity="0.08" />
-
-  <!-- Crossed Swords Icon -->
-  <g transform="translate(116, 116) scale(11.6)" stroke="url(#gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#glow)">
-    <path d="M14.5 17.5L3 6V3h3l11.5 11.5"/>
-    <path d="M13 19l6-6"/>
-    <path d="M16 16l4 4"/>
-    <path d="M19 21l2-2"/>
-    <path d="M9.5 17.5L21 6V3h-3L6.5 14.5"/>
-    <path d="M11 19l-6-6"/>
-    <path d="M8 16l-4 4"/>
-    <path d="M5 21l-2-2"/>
-  </g>
-</svg>
-`);
 
 async function generate() {
   const publicDir = path.resolve('public');
+  const inputImage = path.join(publicDir, 'icon.jpg'); // <- la tua immagine sorgente (PNG/JPG, meglio se quadrata e ad alta risoluzione, es. 1024x1024)
 
-  // Save SVG
-  fs.writeFileSync(path.join(publicDir, 'icon.svg'), svgBuffer);
+  await sharp(inputImage).resize(192, 192).png().toFile(path.join(publicDir, 'icon-192.png'));
+  await sharp(inputImage).resize(512, 512).png().toFile(path.join(publicDir, 'icon-512.png'));
+  await sharp(inputImage).resize(180, 180).png().toFile(path.join(publicDir, 'apple-touch-icon.png'));
 
-  // Generate 192x192
-  await sharp(svgBuffer)
-    .resize(192, 192)
-    .png()
-    .toFile(path.join(publicDir, 'icon-192.png'));
-
-  // Generate 512x512
-  await sharp(svgBuffer)
-    .resize(512, 512)
-    .png()
-    .toFile(path.join(publicDir, 'icon-512.png'));
-
-  // Generate Apple Touch Icon
-  await sharp(svgBuffer)
-    .resize(180, 180)
-    .png()
-    .toFile(path.join(publicDir, 'apple-touch-icon.png'));
-
-  // Generate Maskable 512x512 with extra padding
-  const maskableSvg = Buffer.from(`
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-    <rect width="512" height="512" fill="#0f172a"/>
-    <g transform="translate(51, 51) scale(0.8)">
-      <circle cx="256" cy="256" r="200" fill="#f59e0b" fill-opacity="0.1" />
-      <g transform="translate(116, 116) scale(11.6)" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
-        <path d="M14.5 17.5L3 6V3h3l11.5 11.5"/>
-        <path d="M13 19l6-6"/>
-        <path d="M16 16l4 4"/>
-        <path d="M19 21l2-2"/>
-        <path d="M9.5 17.5L21 6V3h-3L6.5 14.5"/>
-        <path d="M11 19l-6-6"/>
-        <path d="M8 16l-4 4"/>
-        <path d="M5 21l-2-2"/>
-      </g>
-    </g>
-  </svg>
-  `);
-
-  await sharp(maskableSvg)
-    .resize(512, 512)
-    .png()
-    .toFile(path.join(publicDir, 'icon-maskable-512.png'));
+  // Maskable: ridimensiona più piccola e aggiungi un margine di sicurezza
+  await sharp(inputImage)
+      .resize(410, 410)
+      .extend({ top: 51, bottom: 51, left: 51, right: 51, background: '#0f172a' })
+      .png()
+      .toFile(path.join(publicDir, 'icon-maskable-512.png'));
 
   console.log('Icons generated successfully!');
 }
