@@ -6,16 +6,13 @@ import {
   RotateCcw,
   Flag,
   Award,
-  Sparkles,
   X,
   Plus,
   Minus,
-  Check,
-  Skull,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { PlayerTeam, MatchHeroState, Match, Language } from '../types';
-import { HEROES, getHeroById } from '../data/heroes';
+import { getHeroById } from '../data/heroes';
 import { getTranslation } from '../data/translations';
 import { FighterAvatar } from './FighterAvatar';
 
@@ -195,8 +192,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
   // "when becomes bear gains HP equal to his power and has a maximum of 15 HP"
   const handleBodvarTransform = (teamNumber: 1 | 2, heroIndex: number) => {
     updateHero(teamNumber, heroIndex, (hero) => {
-      const addedHp = hero.currentPower;
-      const newHp = Math.min(15, hero.currentHp + addedHp);
+      const newHp = Math.min(15, hero.currentPower);
       return {
         ...hero,
         currentHp: newHp,
@@ -328,7 +324,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                 >
                   -
                 </button>
-                <span className="text-sm font-extrabold text-teal-300 min-w-[32px] text-center">
+                <span className="text-sm font-extrabold text-teal-300 min-w-8 text-center">
                   {heroState.feyFolkHp.elf} / 5
                 </span>
                 <button
@@ -352,7 +348,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                 >
                   -
                 </button>
-                <span className="text-sm font-extrabold text-teal-300 min-w-[32px] text-center">
+                <span className="text-sm font-extrabold text-teal-300 min-w-8 text-center">
                   {heroState.feyFolkHp.gnome} / 4
                 </span>
                 <button
@@ -376,7 +372,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                 >
                   -
                 </button>
-                <span className="text-sm font-extrabold text-teal-300 min-w-[32px] text-center">
+                <span className="text-sm font-extrabold text-teal-300 min-w-8 text-center">
                   {heroState.feyFolkHp.fairy} / 3
                 </span>
                 <button
@@ -434,7 +430,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
           <div className="mt-3">
             <button
               onClick={() => handleBodvarTransform(teamNumber, heroIndex)}
-              className="w-full py-2 px-3 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-transform active:scale-98"
+              className="w-full py-2 px-3 bg-linear-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-transform active:scale-98"
             >
               <span>🐻</span>
               <span>{t.activeMatch.bearTransform}</span>
