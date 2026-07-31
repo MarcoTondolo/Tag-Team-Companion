@@ -6,7 +6,7 @@ import { PlayersManager } from './components/PlayersManager';
 import { StatsView } from './components/StatsView';
 import { MatchHistoryView } from './components/MatchHistoryView';
 import { StorageService } from './services/storage';
-import { Player, Match, PlayerTeam, Language } from './types';
+import { Player, Match, PlayerTeam, Language, AiDifficulty, GameMode } from './types';
 
 export default function App() {
   const [language, setLanguage] = useState<Language>(() => StorageService.getLanguage());
@@ -17,6 +17,9 @@ export default function App() {
     team1: PlayerTeam;
     team2: PlayerTeam;
     startTime: string;
+    isVsAi?: boolean;
+    aiDifficulty?: AiDifficulty;
+    gameMode?: GameMode;
   } | null>(() => StorageService.getActiveMatch());
 
   const [currentTab, setCurrentTab] = useState<string>(() =>
@@ -48,11 +51,20 @@ export default function App() {
   };
 
   // Match management
-  const handleStartMatch = (team1: PlayerTeam, team2: PlayerTeam) => {
+  const handleStartMatch = (
+    team1: PlayerTeam,
+    team2: PlayerTeam,
+    isVsAi?: boolean,
+    aiDifficulty?: AiDifficulty,
+    gameMode?: GameMode
+  ) => {
     const activeData = {
       team1,
       team2,
       startTime: new Date().toISOString(),
+      isVsAi: !!isVsAi,
+      aiDifficulty: aiDifficulty || 'normal',
+      gameMode: gameMode || (isVsAi ? 'vs_ai' : team1.player2Id ? '2v2' : '1v1'),
     };
     setActiveMatch(activeData);
     StorageService.saveActiveMatch(activeData);
@@ -101,6 +113,9 @@ export default function App() {
               <ActiveMatch
                 team1={activeMatch.team1}
                 team2={activeMatch.team2}
+                isVsAi={activeMatch.isVsAi}
+                aiDifficulty={activeMatch.aiDifficulty}
+                gameMode={activeMatch.gameMode}
                 onSaveMatch={handleSaveMatch}
                 language={language}
                 onCancelMatch={handleCancelMatch}

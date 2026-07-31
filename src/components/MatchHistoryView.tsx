@@ -63,11 +63,14 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
               key={match.id}
               className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-md hover:border-slate-700 transition-all space-y-4"
             >
-              {/* Header: Date, Winner, Delete button */}
+              {/* Header: Date, Game Mode, Winner, Delete button */}
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2 text-xs text-slate-400">
                   <Calendar className="w-4 h-4 text-slate-500" />
                   <span>{formattedDate}</span>
+                  <span className="px-2 py-0.5 bg-slate-800 text-amber-400 border border-slate-700 text-[10px] font-extrabold rounded-md uppercase">
+                    {match.gameMode === '2v2' ? '2v2' : match.isVsAi || match.gameMode === 'vs_ai' ? 'VS AI' : '1v1'}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-3">

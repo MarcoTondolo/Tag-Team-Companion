@@ -1,4 +1,4 @@
-import { Player, Match, PlayerTeam, Language } from '../types';
+import { Player, Match, PlayerTeam, Language, AiDifficulty } from '../types';
 
 const STORAGE_KEYS = {
   PLAYERS: 'tagteam_players',
@@ -102,7 +102,7 @@ export const StorageService = {
     this.saveMatches(matches);
   },
 
-  getActiveMatch(): { team1: PlayerTeam; team2: PlayerTeam; startTime: string } | null {
+  getActiveMatch(): { team1: PlayerTeam; team2: PlayerTeam; startTime: string; isVsAi?: boolean; aiDifficulty?: AiDifficulty } | null {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_MATCH);
       return saved ? JSON.parse(saved) : null;
@@ -111,7 +111,7 @@ export const StorageService = {
     }
   },
 
-  saveActiveMatch(data: { team1: PlayerTeam; team2: PlayerTeam; startTime: string }): void {
+  saveActiveMatch(data: { team1: PlayerTeam; team2: PlayerTeam; startTime: string; isVsAi?: boolean; aiDifficulty?: AiDifficulty }): void {
     try {
       localStorage.setItem(STORAGE_KEYS.ACTIVE_MATCH, JSON.stringify(data));
     } catch (e) {

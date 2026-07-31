@@ -30,7 +30,6 @@ export interface FeyFolkHp {
 
 export interface MatchHeroState {
   heroId: string;
-  image: string;
   currentHp: number; // For non-Fey Folk
   currentPower: number;
   isKo: boolean;
@@ -42,8 +41,13 @@ export interface MatchHeroState {
 export interface PlayerTeam {
   playerId: string;
   playerName: string;
+  player2Id?: string;
+  player2Name?: string;
   heroes: MatchHeroState[];
 }
+
+export type AiDifficulty = 'easy' | 'normal' | 'hard';
+export type GameMode = '1v1' | '2v2' | 'vs_ai';
 
 export interface Match {
   id: string;
@@ -54,6 +58,9 @@ export interface Match {
   isDraw: boolean;
   notes?: string;
   durationSeconds?: number;
+  isVsAi?: boolean;
+  aiDifficulty?: AiDifficulty;
+  gameMode?: GameMode;
 }
 
 export interface Player {

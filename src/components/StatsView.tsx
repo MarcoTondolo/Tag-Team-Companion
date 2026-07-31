@@ -13,8 +13,9 @@ import {
   Flame,
   ArrowUpDown,
   Sparkles,
+  Bot,
 } from 'lucide-react';
-import { Player, Match, Language } from '../types';
+import { Player, Match, Language, GameMode } from '../types';
 import { getTranslation } from '../data/translations';
 import { calculateAllStats } from '../utils/stats';
 import { getHeroById } from '../data/heroes';
@@ -35,7 +36,10 @@ export const StatsView: React.FC<StatsViewProps> = ({
 }) => {
   const t = getTranslation(language);
 
-  // 3 tabs: 'players' | 'characters' | 'compositions'
+  // Top Game Mode Selector: '1v1' | '2v2' | 'vs_ai'
+  const [gameMode, setGameMode] = useState<GameMode>('1v1');
+
+  // 3 sub-tabs: 'players' | 'characters' | 'compositions'
   const [activeTab, setActiveTab] = useState<'players' | 'characters' | 'compositions'>('players');
 
   // Search & Filter & Sort state
@@ -50,11 +54,23 @@ export const StatsView: React.FC<StatsViewProps> = ({
     initialPlayerFilterId || null
   );
 
-  // Overall Global stats (for KPI summary cards)
-  const overallStats = calculateAllStats(players, matches);
+  // Filter matches by selected gameMode
+  const modeMatches = matches.filter((m) => {
+    if (gameMode === 'vs_ai') {
+      return m.isVsAi || m.gameMode === 'vs_ai' || m.team2?.playerId === 'bot_ai';
+    }
+    if (gameMode === '2v2') {
+      return m.gameMode === '2v2';
+    }
+    // Default 1v1
+    return !m.isVsAi && m.team2?.playerId !== 'bot_ai' && (m.gameMode === '1v1' || !m.gameMode);
+  });
 
-  // Filtered stats (for Characters & Compositions when filtering by player)
-  const filteredStats = calculateAllStats(players, matches, selectedPlayerFilter);
+  // Overall Global stats for selected mode
+  const overallStats = calculateAllStats(players, modeMatches);
+
+  // Filtered stats by player for selected mode
+  const filteredStats = calculateAllStats(players, modeMatches, selectedPlayerFilter);
 
   // Derive Top KPI Champions
   const topPlayer = overallStats.playerStats.length > 0
@@ -79,6 +95,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
       }))
       .sort((a, b) => b.compScore - a.compScore)[0] ?? null;
 
+
   // Sorting function
   const sortStatsList = <T extends { winRate: number; matchesPlayed: number; wins: number }>(list: T[]): T[] => {
     return [...list].sort((a, b) => {
@@ -94,7 +111,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Top Header & Navigation Tabs */}
+      {/* Top Header & Navigation Controls */}
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-black text-white flex items-center gap-2 tracking-tight">
@@ -108,75 +125,117 @@ export const StatsView: React.FC<StatsViewProps> = ({
           </p>
         </div>
 
-        {/* 3 Main Tabs Pills */}
-        <div className="grid grid-cols-3 w-full md:w-auto bg-slate-950 p-1 rounded-2xl border border-slate-800/80 gap-1">
-          <button
-            onClick={() => setActiveTab('players')}
-            className={`flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'players'
-                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-            <span className="truncate">{t.statsView.tabPlayers}</span>
-          </button>
+        {/* Mode Selector & Sub-tabs Header Block */}
+        <div className="flex flex-col gap-2.5 w-full md:w-auto shrink-0">
+          {/* Top Game Mode Selector: 1v1 | 2v2 | vs AI */}
+          <div className="grid grid-cols-3 bg-slate-950 p-1 rounded-2xl border border-slate-800 gap-1 text-xs">
+            <button
+              onClick={() => setGameMode('1v1')}
+              className={`px-3 py-1.5 rounded-xl font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                gameMode === '1v1'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>{t.statsView.mode1v1}</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('characters')}
-            className={`flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'characters'
-                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-            <span className="truncate">{t.statsView.tabCharacters}</span>
-          </button>
+            <button
+              onClick={() => setGameMode('2v2')}
+              className={`px-3 py-1.5 rounded-xl font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                gameMode === '2v2'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>{t.statsView.mode2v2}</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('compositions')}
-            className={`flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'compositions'
-                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-            <span className="truncate">{t.statsView.tabCompositions}</span>
-          </button>
+            <button
+              onClick={() => setGameMode('vs_ai')}
+              className={`px-3 py-1.5 rounded-xl font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                gameMode === 'vs_ai'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Bot className="w-3.5 h-3.5" />
+              <span>{t.statsView.modeVsAi}</span>
+            </button>
+          </div>
+
+          {/* Sub-Tabs: Giocatori | Eroi | Comp */}
+          <div className="grid grid-cols-3 w-full bg-slate-950 p-1 rounded-2xl border border-slate-800/80 gap-1">
+            <button
+              onClick={() => setActiveTab('players')}
+              className={`flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'players'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+              <span className="truncate">{t.statsView.tabPlayers}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('characters')}
+              className={`flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'characters'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+              <span className="truncate">{t.statsView.tabCharacters}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('compositions')}
+              className={`flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'compositions'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+              <span className="truncate">{t.statsView.tabCompositions}</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* GLOBAL SUMMARY KPI OVERVIEW CARDS */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
         {/* Total Matches */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between mb-2 min-w-0 gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
               {t.statsView.totalMatches}
             </span>
-            <Swords className="w-4 h-4 text-amber-400" />
+            <Swords className="w-4 h-4 text-amber-400 shrink-0" />
           </div>
-          <div className="text-2xl font-black text-white">
-            {matches.length}
+          <div className="text-xl sm:text-2xl font-black text-white">
+            {modeMatches.length}
           </div>
         </div>
 
         {/* Top Player */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between mb-2 min-w-0 gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
               {t.statsView.topPlayer}
             </span>
-            <Trophy className="w-4 h-4 text-amber-400" />
+            <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
           </div>
           {topPlayer && topPlayer.matchesPlayed > 0 ? (
-            <div className="flex items-center gap-2 truncate">
-              <span className="font-extrabold text-white text-sm truncate">
+            <div className="flex items-center justify-between gap-1.5 min-w-0">
+              <span className="font-extrabold text-white text-xs sm:text-sm truncate" title={topPlayer.playerName}>
                 {topPlayer.playerName}
               </span>
-              <span className="text-xs font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 ml-auto">
+              <span className="text-[10px] sm:text-xs font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
                 {topPlayer.winRate}%
               </span>
             </div>
@@ -186,20 +245,22 @@ export const StatsView: React.FC<StatsViewProps> = ({
         </div>
 
         {/* Top Hero */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between mb-2 min-w-0 gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
               {t.statsView.mostPickedHero}
             </span>
-            <Medal className="w-4 h-4 text-amber-400" />
+            <Medal className="w-4 h-4 text-amber-400 shrink-0" />
           </div>
           {topHero ? (
-            <div className="flex items-center gap-2 truncate">
-              <FighterAvatar heroId={topHero.heroId} size="sm" />
-              <span className="font-extrabold text-white text-xs truncate">
-                {topHero.heroName}
-              </span>
-              <span className="text-[11px] font-bold text-amber-400 ml-auto">
+            <div className="flex items-center justify-between gap-1.5 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <FighterAvatar heroId={topHero.heroId} size="sm" className="shrink-0" />
+                <span className="font-extrabold text-white text-xs sm:text-sm truncate" title={topHero.heroName}>
+                  {topHero.heroName}
+                </span>
+              </div>
+              <span className="text-[10px] sm:text-xs font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
                 {topHero.winRate}%
               </span>
             </div>
@@ -209,19 +270,25 @@ export const StatsView: React.FC<StatsViewProps> = ({
         </div>
 
         {/* Best Tag Team Comp */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden">
+          <div className="flex items-center justify-between mb-2 min-w-0 gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">
               {t.statsView.bestComp}
             </span>
-            <Flame className="w-4 h-4 text-amber-400" />
+            <Flame className="w-4 h-4 text-amber-400 shrink-0" />
           </div>
           {topComp ? (
-            <div className="flex items-center gap-2 truncate">
-              <span className="font-extrabold text-white text-xs truncate">
-                {topComp.compName}
-              </span>
-              <span className="text-[11px] font-bold text-amber-400 ml-auto">
+            <div className="flex items-center justify-between gap-1.5 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex items-center -space-x-2 shrink-0">
+                  {topComp.heroIds[0] && <FighterAvatar heroId={topComp.heroIds[0]} size="sm" />}
+                  {topComp.heroIds[1] && <FighterAvatar heroId={topComp.heroIds[1]} size="sm" />}
+                </div>
+                <span className="font-extrabold text-white text-xs sm:text-sm truncate leading-tight" title={topComp.compName}>
+                  {topComp.compName}
+                </span>
+              </div>
+              <span className="text-[10px] sm:text-xs font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
                 {topComp.winRate}%
               </span>
             </div>

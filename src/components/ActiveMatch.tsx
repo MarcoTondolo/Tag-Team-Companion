@@ -6,19 +6,26 @@ import {
   RotateCcw,
   Flag,
   Award,
+  Sparkles,
   X,
   Plus,
   Minus,
+  Check,
+  Skull,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { PlayerTeam, MatchHeroState, Match, Language } from '../types';
-import { getHeroById } from '../data/heroes';
+import { PlayerTeam, MatchHeroState, Match, Language, AiDifficulty, GameMode } from '../types';
+import { HEROES, getHeroById } from '../data/heroes';
 import { getTranslation } from '../data/translations';
 import { FighterAvatar } from './FighterAvatar';
+import { BotAiAssistantCard } from './BotAiAssistantCard';
 
 interface ActiveMatchProps {
   team1: PlayerTeam;
   team2: PlayerTeam;
+  isVsAi?: boolean;
+  aiDifficulty?: AiDifficulty;
+  gameMode?: GameMode;
   onSaveMatch: (match: Match) => void;
   language: Language;
   onCancelMatch: () => void;
@@ -27,11 +34,15 @@ interface ActiveMatchProps {
 export const ActiveMatch: React.FC<ActiveMatchProps> = ({
   team1: initialTeam1,
   team2: initialTeam2,
+  isVsAi = false,
+  aiDifficulty = 'normal',
+  gameMode,
   onSaveMatch,
   language,
   onCancelMatch,
 }) => {
   const t = getTranslation(language);
+  const activeAiDifficulty: AiDifficulty = aiDifficulty as AiDifficulty;
 
   // Live state for team 1 and team 2
   const [team1, setTeam1] = useState<PlayerTeam>(initialTeam1);
@@ -192,12 +203,12 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
   // "when becomes bear gains HP equal to his power and has a maximum of 15 HP"
   const handleBodvarTransform = (teamNumber: 1 | 2, heroIndex: number) => {
     updateHero(teamNumber, heroIndex, (hero) => {
-      const newHp = Math.min(15, hero.currentPower);
+      const addedHp = hero.currentPower;
+      const newHp = Math.min(15, hero.currentHp + addedHp);
       return {
         ...hero,
         currentHp: newHp,
         isBearForm: true,
-        image: `${import.meta.env.BASE_URL}heroes/bodvar_bear.png`,
       };
     });
   };
@@ -219,6 +230,9 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
       team2,
       winnerPlayerId: winnerModal.winnerPlayerId,
       isDraw: winnerModal.isDraw,
+      isVsAi,
+      aiDifficulty: activeAiDifficulty,
+      gameMode: gameMode || (isVsAi ? 'vs_ai' : team1.player2Id ? '2v2' : '1v1'),
       durationSeconds: Math.round(
         (new Date().getTime() - new Date(startTime).getTime()) / 1000
       ),
@@ -246,7 +260,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
         {/* Header bar of fighter card */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
-            <FighterAvatar heroId={heroData.id} image={heroState.image} size="md" isKo={heroState.isKo} />
+            <FighterAvatar heroId={heroData.id} size="md" isKo={heroState.isKo} />
             <div>
               <h4 className="font-extrabold text-white text-base">{heroData.name}</h4>
               <p className="text-[11px] text-slate-400">{heroData.title[language]}</p>
@@ -324,7 +338,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                 >
                   -
                 </button>
-                <span className="text-sm font-extrabold text-teal-300 min-w-8 text-center">
+                <span className="text-sm font-extrabold text-teal-300 min-w-[32px] text-center">
                   {heroState.feyFolkHp.elf} / 5
                 </span>
                 <button
@@ -348,7 +362,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                 >
                   -
                 </button>
-                <span className="text-sm font-extrabold text-teal-300 min-w-8 text-center">
+                <span className="text-sm font-extrabold text-teal-300 min-w-[32px] text-center">
                   {heroState.feyFolkHp.gnome} / 4
                 </span>
                 <button
@@ -372,7 +386,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                 >
                   -
                 </button>
-                <span className="text-sm font-extrabold text-teal-300 min-w-8 text-center">
+                <span className="text-sm font-extrabold text-teal-300 min-w-[32px] text-center">
                   {heroState.feyFolkHp.fairy} / 3
                 </span>
                 <button
@@ -430,7 +444,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
           <div className="mt-3">
             <button
               onClick={() => handleBodvarTransform(teamNumber, heroIndex)}
-              className="w-full py-2 px-3 bg-linear-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-transform active:scale-98"
+              className="w-full py-2 px-3 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-transform active:scale-98"
             >
               <span>🐻</span>
               <span>{t.activeMatch.bearTransform}</span>
@@ -546,6 +560,14 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
           )}
         </div>
       </div>
+
+      {/* BOT AI SOLO ASSISTANT PANEL */}
+      {(isVsAi || team2.playerId === 'bot_ai') && (
+        <BotAiAssistantCard
+          aiDifficulty={activeAiDifficulty}
+          language={language}
+        />
+      )}
 
       {/* MATCH BATTLEFIELD GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

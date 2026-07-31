@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Swords, AlertCircle, Sparkles, UserPlus, Lock, X } from 'lucide-react';
-import { Player, Language, PlayerTeam, MatchHeroState } from '../types';
+import { Swords, AlertCircle, Sparkles, UserPlus, Lock, X, Bot, Users, BookOpen, RefreshCw, Zap } from 'lucide-react';
+import { Player, Language, PlayerTeam, MatchHeroState, AiDifficulty, GameMode } from '../types';
 import { HEROES, getHeroById } from '../data/heroes';
 import { getTranslation } from '../data/translations';
 import { FighterAvatar } from './FighterAvatar';
+import { SoloRulesModal } from './SoloRulesModal';
 
 interface DraftMatchProps {
   players: Player[];
-  onStartMatch: (team1: PlayerTeam, team2: PlayerTeam) => void;
+  onStartMatch: (
+    team1: PlayerTeam,
+    team2: PlayerTeam,
+    isVsAi?: boolean,
+    aiDifficulty?: AiDifficulty,
+    gameMode?: GameMode
+  ) => void;
   language: Language;
   onQuickAddPlayer: (name: string) => void;
 }
@@ -20,42 +27,119 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
 }) => {
   const t = getTranslation(language);
 
-  // Player selection
+  // Match Mode: '1v1' | '2v2' | 'vs_ai'
+  const [matchMode, setMatchMode] = useState<GameMode>('1v1');
+  const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>('normal');
+  const [showSoloRulesModal, setShowSoloRulesModal] = useState<boolean>(false);
+
+  // 1v1 / vs_ai player selection
   const [player1Id, setPlayer1Id] = useState<string>(players[0]?.id || '');
   const [player2Id, setPlayer2Id] = useState<string>(
     players.find((p) => p.id !== players[0]?.id)?.id || players[1]?.id || ''
   );
 
-  // Hero draft selections per player (arrays of up to 2 hero IDs)
+  // 2v2 player selections (4 distinct players)
+  const [p1aId, setP1aId] = useState<string>(players[0]?.id || '');
+  const [p1bId, setP1bId] = useState<string>(players[1]?.id || '');
+  const [p2aId, setP2aId] = useState<string>(players[2]?.id || '');
+  const [p2bId, setP2bId] = useState<string>(players[3]?.id || '');
+
+  // Hero draft selections per team (arrays of up to 2 hero IDs)
   const [p1Heroes, setP1Heroes] = useState<string[]>(['wong', 'bodvar']);
   const [p2Heroes, setP2Heroes] = useState<string[]>(['ching_shih', 'joan']);
+
+  // Guided Solo Draft State (6 Fighters -> 2 Pairs -> Random Assignment)
+  const [soloDraftMethod, setSoloDraftMethod] = useState<'guided' | 'direct'>('guided');
+  const [drawn6Heroes, setDrawn6Heroes] = useState<string[]>([]);
+  const [pairAHeroes, setPairAHeroes] = useState<string[]>([]);
+  const [pairBHeroes, setPairBHeroes] = useState<string[]>([]);
 
   // Quick player add state
   const [quickName, setQuickName] = useState('');
 
-  // Keep player selections valid & distinct when players prop changes or on player change
+  // Keep player selections valid & distinct when players prop changes or on mode switch
   useEffect(() => {
-    if (players.length >= 2) {
+    if (players.length >= 1) {
       if (!player1Id || !players.some((p) => p.id === player1Id)) {
-        const nextP1 = players[0]?.id || '';
-        const nextP2 = players.find((p) => p.id !== nextP1)?.id || '';
-        setPlayer1Id(nextP1);
-        setPlayer2Id(nextP2);
-      } else if (!player2Id || player2Id === player1Id || !players.some((p) => p.id === player2Id)) {
-        const nextP2 = players.find((p) => p.id !== player1Id)?.id || '';
-        setPlayer2Id(nextP2);
+        setPlayer1Id(players[0]?.id || '');
+      }
+      if (matchMode === '1v1') {
+        if (!player2Id || player2Id === player1Id || !players.some((p) => p.id === player2Id)) {
+          const nextP2 = players.find((p) => p.id !== player1Id)?.id || '';
+          setPlayer2Id(nextP2);
+        }
+      }
+      if (matchMode === '2v2') {
+        // Auto-assign 4 distinct IDs if available
+        const currentSelected = [p1aId, p1bId, p2aId, p2bId];
+        const validP1a = players.some((p) => p.id === p1aId) ? p1aId : players[0]?.id || '';
+        const validP1b = players.some((p) => p.id === p1bId && p.id !== validP1a)
+          ? p1bId
+          : players.find((p) => p.id !== validP1a)?.id || '';
+        const validP2a = players.some((p) => p.id === p2aId && p.id !== validP1a && p.id !== validP1b)
+          ? p2aId
+          : players.find((p) => p.id !== validP1a && p.id !== validP1b)?.id || '';
+        const validP2b = players.some(
+          (p) => p.id === p2bId && p.id !== validP1a && p.id !== validP1b && p.id !== validP2a
+        )
+          ? p2bId
+          : players.find((p) => p.id !== validP1a && p.id !== validP1b && p.id !== validP2a)?.id || '';
+
+        setP1aId(validP1a);
+        setP1bId(validP1b);
+        setP2aId(validP2a);
+        setP2bId(validP2b);
       }
     }
-  }, [players, player1Id, player2Id]);
+  }, [players, player1Id, player2Id, matchMode]);
+
+  // Handle Solo Mode 6-Fighter Drawing
+  const handleDraw6RandomFighters = () => {
+    const shuffled = [...HEROES].map((h) => h.id).sort(() => Math.random() - 0.5);
+    const selected6 = shuffled.slice(0, 6);
+    setDrawn6Heroes(selected6);
+    setPairAHeroes([]);
+    setPairBHeroes([]);
+  };
+
+  // Automatically form 2 balanced, synergistic pairs from the 6 drawn fighters
+  const handleAutoFormPairs = () => {
+    if (drawn6Heroes.length !== 6) return;
+    const shuffled = [...drawn6Heroes].sort(() => Math.random() - 0.5);
+    setPairAHeroes([shuffled[0], shuffled[1]]);
+    setPairBHeroes([shuffled[2], shuffled[3]]);
+  };
+
+  // Randomly assign Pair A and Pair B to Human Player and Bot AI (Michael Kelley Rule)
+  const handleRandomPairAssignment = () => {
+    if (pairAHeroes.length !== 2 || pairBHeroes.length !== 2) return;
+    const isHumanPairA = Math.random() < 0.5;
+    if (isHumanPairA) {
+      setP1Heroes([...pairAHeroes]);
+      setP2Heroes([...pairBHeroes]);
+    } else {
+      setP1Heroes([...pairBHeroes]);
+      setP2Heroes([...pairAHeroes]);
+    }
+  };
 
   // Check duplicate heroes & team validity
   const allSelectedHeroes = [...p1Heroes, ...p2Heroes];
   const hasDuplicateHero = new Set(allSelectedHeroes).size !== allSelectedHeroes.length;
-  const isSamePlayer = player1Id === player2Id;
+
+  const isSamePlayer1v1 = matchMode === '1v1' && player1Id === player2Id;
+  const selected2v2Players = [p1aId, p1bId, p2aId, p2bId].filter(Boolean);
+  const is2v2Valid = matchMode === '2v2' && new Set(selected2v2Players).size === 4 && players.length >= 4;
+
   const isTeam1Complete = p1Heroes.length === 2;
   const isTeam2Complete = p2Heroes.length === 2;
+
   const canStartMatch =
-    isTeam1Complete && isTeam2Complete && !hasDuplicateHero && !isSamePlayer && player1Id && player2Id;
+    matchMode === 'vs_ai'
+      ? isTeam1Complete && isTeam2Complete && !hasDuplicateHero && player1Id
+      : matchMode === '2v2'
+      ? isTeam1Complete && isTeam2Complete && !hasDuplicateHero && is2v2Valid
+      : isTeam1Complete && isTeam2Complete && !hasDuplicateHero && !isSamePlayer1v1 && player1Id && player2Id;
 
   const handleQuickAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +150,7 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
 
   const handlePlayer1Change = (newP1Id: string) => {
     setPlayer1Id(newP1Id);
-    if (player2Id === newP1Id) {
+    if (matchMode === '1v1' && player2Id === newP1Id) {
       const remaining = players.find((p) => p.id !== newP1Id);
       if (remaining) setPlayer2Id(remaining.id);
     }
@@ -80,37 +164,31 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
     }
   };
 
-  // Toggle selection for Player 1
+  // Toggle selection for Team 1
   const toggleP1Hero = (heroId: string) => {
     if (p2Heroes.includes(heroId)) return; // Cannot pick opponent's hero
 
     if (p1Heroes.includes(heroId)) {
-      // Deselect
       setP1Heroes(p1Heroes.filter((id) => id !== heroId));
     } else {
-      // Select
       if (p1Heroes.length < 2) {
         setP1Heroes([...p1Heroes, heroId]);
       } else {
-        // If already 2 selected, replace the 2nd one
         setP1Heroes([p1Heroes[0], heroId]);
       }
     }
   };
 
-  // Toggle selection for Player 2
+  // Toggle selection for Team 2
   const toggleP2Hero = (heroId: string) => {
     if (p1Heroes.includes(heroId)) return; // Cannot pick opponent's hero
 
     if (p2Heroes.includes(heroId)) {
-      // Deselect
       setP2Heroes(p2Heroes.filter((id) => id !== heroId));
     } else {
-      // Select
       if (p2Heroes.length < 2) {
         setP2Heroes([...p2Heroes, heroId]);
       } else {
-        // If already 2 selected, replace the 2nd one
         setP2Heroes([p2Heroes[0], heroId]);
       }
     }
@@ -119,12 +197,9 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
   const handleStart = () => {
     if (!canStartMatch) return;
 
-    const p1 = players.find((p) => p.id === player1Id);
-    const p2 = players.find((p) => p.id === player2Id);
+    const isVsAi = matchMode === 'vs_ai';
 
-    if (!p1 || !p2) return;
-
-    // Build MatchHeroState helper
+    // Build Hero State helper
     const buildHeroState = (heroId: string): MatchHeroState => {
       const hero = getHeroById(heroId);
       if (!hero) {
@@ -158,26 +233,70 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
     if (p2Heroes[0] === 'wild_bunch') team2Heroes[1].currentPower += 1;
     if (p2Heroes[1] === 'wild_bunch') team2Heroes[0].currentPower += 1;
 
-    const team1: PlayerTeam = {
-      playerId: p1.id,
-      playerName: p1.name,
-      heroes: team1Heroes,
-    };
+    let team1: PlayerTeam;
+    let team2: PlayerTeam;
 
-    const team2: PlayerTeam = {
-      playerId: p2.id,
-      playerName: p2.name,
-      heroes: team2Heroes,
-    };
+    if (matchMode === '2v2') {
+      const p1a = players.find((p) => p.id === p1aId);
+      const p1b = players.find((p) => p.id === p1bId);
+      const p2a = players.find((p) => p.id === p2aId);
+      const p2b = players.find((p) => p.id === p2bId);
 
-    onStartMatch(team1, team2);
+      if (!p1a || !p1b || !p2a || !p2b) return;
+
+      team1 = {
+        playerId: p1a.id,
+        playerName: `${p1a.name} & ${p1b.name}`,
+        player2Id: p1b.id,
+        player2Name: p1b.name,
+        heroes: team1Heroes,
+      };
+
+      team2 = {
+        playerId: p2a.id,
+        playerName: `${p2a.name} & ${p2b.name}`,
+        player2Id: p2b.id,
+        player2Name: p2b.name,
+        heroes: team2Heroes,
+      };
+    } else {
+      const p1 = players.find((p) => p.id === player1Id);
+      if (!p1) return;
+
+      let p2Name = 'Bot AI';
+      let p2Id = 'bot_ai';
+
+      if (!isVsAi) {
+        const p2 = players.find((p) => p.id === player2Id);
+        if (!p2) return;
+        p2Name = p2.name;
+        p2Id = p2.id;
+      } else {
+        const diffLabel = aiDifficulty === 'easy' ? 'Facile' : aiDifficulty === 'hard' ? 'Difficile' : 'Normale';
+        p2Name = `Bot AI (${diffLabel})`;
+      }
+
+      team1 = {
+        playerId: p1.id,
+        playerName: p1.name,
+        heroes: team1Heroes,
+      };
+
+      team2 = {
+        playerId: p2Id,
+        playerName: p2Name,
+        heroes: team2Heroes,
+      };
+    }
+
+    onStartMatch(team1, team2, isVsAi, aiDifficulty, matchMode);
   };
 
-  if (players.length < 2) {
+  if (players.length < 1) {
     return (
       <div className="max-w-md mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-4 shadow-xl">
         <AlertCircle className="w-12 h-12 text-amber-400 mx-auto" />
-        <h2 className="text-xl font-bold text-white">{t.draft.needPlayers}</h2>
+        <h2 className="text-xl font-bold text-white">Crea un profilo per iniziare</h2>
         <form onSubmit={handleQuickAdd} className="flex gap-2 pt-2">
           <input
             type="text"
@@ -198,11 +317,11 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
     );
   }
 
-  // Filter player options to exclude opponent
-  const player1Options = players.filter((p) => p.id !== player2Id);
+  // Filter player options to exclude opponent in 1v1 mode
+  const player1Options = matchMode === '1v1' ? players.filter((p) => p.id !== player2Id) : players;
   const player2Options = players.filter((p) => p.id !== player1Id);
 
-  // Render hero selection grid for a player
+  // Render hero selection grid for a team
   const renderSingleHeroGrid = (
     selectedHeroes: string[],
     opponentHeroes: string[],
@@ -341,68 +460,444 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Title */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-black text-white flex items-center gap-2 tracking-tight">
-            <Swords className="w-6 h-6 text-amber-400" />
-            {t.draft.title}
-          </h2>
-          <p className="text-slate-400 text-xs mt-1">
-            {language === 'it'
-              ? "Tocca un eroe per selezionarlo/deselezionarlo (massimo 2 per giocatore). Gli eroi presi dall'avversario vengono disabilitati."
-              : 'Tap a hero icon to select or deselect (max 2 per player). Opponent picks are locked.'}
-          </p>
+      
+      {/* Top Header Card: Title & Mode Selector */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="text-center md:text-left">
+            <h2 className="text-xl font-black text-white flex items-center justify-center md:justify-start gap-2 tracking-tight">
+              <Swords className="w-6 h-6 text-amber-400" />
+              {t.draft.title}
+            </h2>
+            <p className="text-slate-400 text-xs mt-1">
+              {language === 'it'
+                ? 'Scegli la modalità di gioco: 1v1, 2v2 a squadre, o sfida il Bot AI.'
+                : 'Select game mode: 1v1, 2v2 team match, or play solo against Bot AI.'}
+            </p>
+          </div>
+
+          {/* Mode Switcher Buttons */}
+          <div className="inline-flex items-center p-1 bg-slate-950 rounded-2xl border border-slate-800/80 w-fit shrink-0 gap-1 self-center mx-auto md:mx-0">
+            <button
+              type="button"
+              onClick={() => setMatchMode('1v1')}
+              className={`px-3.5 py-2 rounded-xl font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                matchMode === '1v1'
+                  ? 'bg-amber-500 text-slate-950 shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Users className="w-4 h-4 shrink-0" />
+              <span>{t.draft.modePvP}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMatchMode('2v2')}
+              className={`px-3.5 py-2 rounded-xl font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                matchMode === '2v2'
+                  ? 'bg-amber-500 text-slate-950 shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Users className="w-4 h-4 shrink-0" />
+              <span>{t.draft.mode2v2}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMatchMode('vs_ai')}
+              className={`px-3.5 py-2 rounded-xl font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                matchMode === 'vs_ai'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Bot className="w-4 h-4 shrink-0" />
+              <span>{t.draft.modeVsAi}</span>
+            </button>
+          </div>
         </div>
+
+        {/* 2v2 Mode Quick Add Notice if less than 4 players */}
+        {matchMode === '2v2' && players.length < 4 && (
+          <div className="p-4 bg-amber-950/40 border border-amber-500/40 rounded-2xl space-y-3">
+            <div className="flex items-center gap-2 text-amber-300 text-xs font-bold">
+              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>{t.draft.need4Players} ({players.length} / 4)</span>
+            </div>
+            <form onSubmit={handleQuickAdd} className="flex gap-2">
+              <input
+                type="text"
+                value={quickName}
+                onChange={(e) => setQuickName(e.target.value)}
+                placeholder={t.playersView.playerNamePlaceholder}
+                className="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500 w-full"
+              />
+              <button
+                type="submit"
+                className="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded-xl text-xs hover:bg-amber-400 flex items-center gap-1 shrink-0 cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                {t.common.confirm}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Solo Mode Settings Banner */}
+        {matchMode === 'vs_ai' && (
+          <div className="p-4 bg-slate-950/80 border border-amber-500/30 rounded-2xl space-y-3 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Bot className="w-5 h-5 text-amber-400" />
+                <span className="text-sm font-bold text-white">
+                  {t.draft.difficultyLabel}
+                </span>
+              </div>
+
+              {/* Difficulty Radio Buttons */}
+              <div className="flex items-center gap-2">
+                {(['easy', 'normal', 'hard'] as AiDifficulty[]).map((diff) => (
+                  <button
+                    key={diff}
+                    type="button"
+                    onClick={() => setAiDifficulty(diff)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                      aiDifficulty === diff
+                        ? diff === 'easy'
+                          ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm'
+                          : diff === 'normal'
+                          ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
+                          : 'bg-rose-600 text-white border-rose-500 shadow-sm'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {diff === 'easy' && t.draft.easy}
+                    {diff === 'normal' && t.draft.normal}
+                    {diff === 'hard' && t.draft.hard}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Solo Rules Button & Draft Method Switcher */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowSoloRulesModal(true)}
+                className="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-2 w-fit cursor-pointer"
+              >
+                <BookOpen className="w-4 h-4 text-amber-400" />
+                <span>{t.draft.soloRulesBtn}</span>
+              </button>
+
+              <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setSoloDraftMethod('guided')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-colors cursor-pointer ${
+                    soloDraftMethod === 'guided'
+                      ? 'bg-amber-500 text-slate-950'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {t.draft.draftMethodGuided}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSoloDraftMethod('direct')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-colors cursor-pointer ${
+                    soloDraftMethod === 'direct'
+                      ? 'bg-amber-500 text-slate-950'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {t.draft.draftMethodDirect}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* GUIDED SOLO DRAFT ASSISTANT (MICHAEL KELLEY RULES) */}
+      {matchMode === 'vs_ai' && soloDraftMethod === 'guided' && (
+        <div className="bg-slate-900 border border-amber-500/30 rounded-3xl p-6 shadow-xl space-y-6 animate-fade-in">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h3 className="text-base font-extrabold text-amber-400 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-400" />
+                Draft Guidato Solitario (Regole Michael Kelley)
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Pesca 6 lottatori, crea 2 coppie equilibrate, ed estrai a caso quale coppia andrà al Giocatore e quale al Bot.
+              </p>
+            </div>
+          </div>
+
+          {/* STEP 1: Draw 6 Random Fighters */}
+          <div className="space-y-3 bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
+                Passo 1: Estrazione dei 6 Lottatori
+              </span>
+              <button
+                type="button"
+                onClick={handleDraw6RandomFighters}
+                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                {drawn6Heroes.length === 6 ? 'Riestrai 6 Casuali' : 'Estrai 6 Lottatori Casuali'}
+              </button>
+            </div>
+
+            {drawn6Heroes.length === 6 ? (
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 pt-2">
+                {drawn6Heroes.map((hId) => {
+                  const hero = getHeroById(hId);
+                  if (!hero) return null;
+                  return (
+                    <div
+                      key={hId}
+                      className="p-2 bg-slate-900 border border-amber-500/30 rounded-xl flex flex-col items-center justify-center text-center shadow-sm"
+                    >
+                      <FighterAvatar heroId={hero.id} size="sm" />
+                      <span className="text-[10px] font-extrabold text-white mt-1 truncate max-w-full">
+                        {hero.name}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic">
+                Premi il pulsante in alto per estrarre casualmente 6 lottatori dal roster di 12.
+              </p>
+            )}
+          </div>
+
+          {/* STEP 2 & 3: Form Pairs & Random Assignment */}
+          {drawn6Heroes.length === 6 && (
+            <div className="space-y-4 bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
+                  Passo 2 & 3: Composizione Coppie & Estrazione
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAutoFormPairs}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs rounded-xl border border-amber-500/30 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    Autocomponi 2 Coppie
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRandomPairAssignment}
+                    disabled={pairAHeroes.length !== 2 || pairBHeroes.length !== 2}
+                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-bold text-xs rounded-xl shadow flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    🎲 Estrai Assegnazione Casuale
+                  </button>
+                </div>
+              </div>
+
+              {/* Display Formed Pairs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-3 bg-slate-900 border border-blue-500/40 rounded-xl space-y-2">
+                  <div className="text-xs font-bold text-blue-400 flex items-center justify-between">
+                    <span>Coppia A</span>
+                    <span className="text-[10px] text-slate-400">{pairAHeroes.length} / 2 Eroi</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[0, 1].map((idx) => {
+                      const hId = pairAHeroes[idx];
+                      const hero = hId ? getHeroById(hId) : null;
+                      return (
+                        <div key={idx} className="p-2 bg-slate-950 rounded-lg border border-slate-800 flex items-center gap-2">
+                          {hero ? (
+                            <>
+                              <FighterAvatar heroId={hero.id} size="sm" />
+                              <span className="text-xs font-bold text-white truncate">{hero.name}</span>
+                            </>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic">Vuoto</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-900 border border-rose-500/40 rounded-xl space-y-2">
+                  <div className="text-xs font-bold text-rose-400 flex items-center justify-between">
+                    <span>Coppia B</span>
+                    <span className="text-[10px] text-slate-400">{pairBHeroes.length} / 2 Eroi</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[0, 1].map((idx) => {
+                      const hId = pairBHeroes[idx];
+                      const hero = hId ? getHeroById(hId) : null;
+                      return (
+                        <div key={idx} className="p-2 bg-slate-950 rounded-lg border border-slate-800 flex items-center gap-2">
+                          {hero ? (
+                            <>
+                              <FighterAvatar heroId={hero.id} size="sm" />
+                              <span className="text-xs font-bold text-white truncate">{hero.name}</span>
+                            </>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic">Vuoto</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Players & Heroes Draft Container */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* PLAYER 1 BOX (BLUE THEME) */}
+        {/* TEAM 1 BOX (BLUE THEME) */}
         <div className="bg-slate-900 border border-blue-900/50 rounded-3xl p-6 shadow-xl space-y-5">
-          <div className="flex items-center justify-between border-b border-blue-900/40 pb-3">
+          <div className="flex flex-col gap-3 border-b border-blue-900/40 pb-3">
             <h3 className="text-base font-extrabold text-blue-400 flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-blue-500 shadow-sm" />
-              {t.draft.player1}
+              {matchMode === 'vs_ai'
+                ? 'Giocatore Umano (Blu)'
+                : matchMode === '2v2'
+                ? 'Team 1 (Blu)'
+                : t.draft.player1}
             </h3>
-            <select
-              value={player1Id}
-              onChange={(e) => handlePlayer1Change(e.target.value)}
-              className="bg-slate-950 border border-blue-800/80 rounded-xl px-3 py-1.5 text-sm font-bold text-white focus:outline-none focus:border-blue-400 cursor-pointer"
-            >
-              {player1Options.map((p) => (
-                <option key={p.id} value={p.id} className="bg-slate-900">
-                  {p.name}
-                </option>
-              ))}
-            </select>
+
+            {/* Player Selection Dropdowns */}
+            {matchMode === '2v2' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                    {language === 'it' ? 'Giocatore 1A' : 'Player 1A'}
+                  </label>
+                  <select
+                    value={p1aId}
+                    onChange={(e) => setP1aId(e.target.value)}
+                    className="w-full bg-slate-950 border border-blue-800/80 rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-blue-400 cursor-pointer"
+                  >
+                    {players.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-slate-900">
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                    {language === 'it' ? 'Giocatore 1B' : 'Player 1B'}
+                  </label>
+                  <select
+                    value={p1bId}
+                    onChange={(e) => setP1bId(e.target.value)}
+                    className="w-full bg-slate-950 border border-blue-800/80 rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-blue-400 cursor-pointer"
+                  >
+                    {players.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-slate-900">
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <select
+                value={player1Id}
+                onChange={(e) => handlePlayer1Change(e.target.value)}
+                className="bg-slate-950 border border-blue-800/80 rounded-xl px-3 py-1.5 text-sm font-bold text-white focus:outline-none focus:border-blue-400 cursor-pointer w-full"
+              >
+                {player1Options.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-slate-900">
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
-          {/* Interactive Hero Grid for Player 1 */}
+          {/* Interactive Hero Grid for Team 1 */}
           {renderSingleHeroGrid(p1Heroes, p2Heroes, toggleP1Hero, 'blue')}
         </div>
 
-        {/* PLAYER 2 BOX (RED THEME) */}
+        {/* TEAM 2 / BOT AI BOX (RED THEME) */}
         <div className="bg-slate-900 border border-rose-900/50 rounded-3xl p-6 shadow-xl space-y-5">
-          <div className="flex items-center justify-between border-b border-rose-900/40 pb-3">
+          <div className="flex flex-col gap-3 border-b border-rose-900/40 pb-3">
             <h3 className="text-base font-extrabold text-rose-400 flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-rose-500 shadow-sm" />
-              {t.draft.player2}
+              {matchMode === 'vs_ai'
+                ? '🤖 Bot AI (Rosso)'
+                : matchMode === '2v2'
+                ? 'Team 2 (Rosso)'
+                : t.draft.player2}
             </h3>
-            <select
-              value={player2Id}
-              onChange={(e) => handlePlayer2Change(e.target.value)}
-              className="bg-slate-950 border border-rose-800/80 rounded-xl px-3 py-1.5 text-sm font-bold text-white focus:outline-none focus:border-rose-400 cursor-pointer"
-            >
-              {player2Options.map((p) => (
-                <option key={p.id} value={p.id} className="bg-slate-900">
-                  {p.name}
-                </option>
-              ))}
-            </select>
+
+            {/* Player Selection Dropdowns */}
+            {matchMode === '2v2' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                    {language === 'it' ? 'Giocatore 2A' : 'Player 2A'}
+                  </label>
+                  <select
+                    value={p2aId}
+                    onChange={(e) => setP2aId(e.target.value)}
+                    className="w-full bg-slate-950 border border-rose-800/80 rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-rose-400 cursor-pointer"
+                  >
+                    {players.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-slate-900">
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                    {language === 'it' ? 'Giocatore 2B' : 'Player 2B'}
+                  </label>
+                  <select
+                    value={p2bId}
+                    onChange={(e) => setP2bId(e.target.value)}
+                    className="w-full bg-slate-950 border border-rose-800/80 rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-rose-400 cursor-pointer"
+                  >
+                    {players.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-slate-900">
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : matchMode === '1v1' ? (
+              <select
+                value={player2Id}
+                onChange={(e) => handlePlayer2Change(e.target.value)}
+                className="bg-slate-950 border border-rose-800/80 rounded-xl px-3 py-1.5 text-sm font-bold text-white focus:outline-none focus:border-rose-400 cursor-pointer w-full"
+              >
+                {player2Options.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-slate-900">
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="px-3 py-1.5 bg-rose-950 text-rose-300 border border-rose-800 text-xs font-extrabold rounded-xl w-fit">
+                Bot AI ({aiDifficulty === 'easy' ? 'Facile' : aiDifficulty === 'hard' ? 'Difficile' : 'Normale'})
+              </span>
+            )}
           </div>
 
-          {/* Interactive Hero Grid for Player 2 */}
+          {/* Interactive Hero Grid for Team 2 / Bot AI */}
           {renderSingleHeroGrid(p2Heroes, p1Heroes, toggleP2Hero, 'rose')}
         </div>
       </div>
@@ -420,8 +915,8 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
           <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
           <span>
             {language === 'it'
-              ? 'Seleziona esattamente 2 eroi per ciascun giocatore per iniziare il match.'
-              : 'Please select exactly 2 heroes for each player to start the match.'}
+              ? 'Seleziona esattamente 2 eroi per ciascun team per iniziare il match.'
+              : 'Please select exactly 2 heroes for each team to start the match.'}
           </span>
         </div>
       )}
@@ -433,10 +928,17 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
         </div>
       )}
 
-      {isSamePlayer && (
+      {isSamePlayer1v1 && (
         <div className="p-3.5 bg-red-950/60 border border-red-500/50 rounded-2xl text-red-300 text-xs font-semibold flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{t.draft.samePlayerError}</span>
+        </div>
+      )}
+
+      {matchMode === '2v2' && !is2v2Valid && players.length >= 4 && (
+        <div className="p-3.5 bg-red-950/60 border border-red-500/50 rounded-2xl text-red-300 text-xs font-semibold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{t.draft.samePlayerIn2v2Error}</span>
         </div>
       )}
 
@@ -449,9 +951,17 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
           className="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 hover:from-amber-400 hover:to-red-500 disabled:opacity-40 text-slate-950 font-black text-base rounded-2xl shadow-xl shadow-amber-500/20 transition-all transform active:scale-98 flex items-center justify-center gap-2 mx-auto cursor-pointer"
         >
           <Swords className="w-5 h-5" />
-          {t.draft.startMatch}
+          {t.draft.startMatch} {matchMode === 'vs_ai' && '(VS AI)'} {matchMode === '2v2' && '(2v2)'}
         </button>
       </div>
+
+      {/* SOLO RULES MODAL */}
+      <SoloRulesModal
+        isOpen={showSoloRulesModal}
+        onClose={() => setShowSoloRulesModal(false)}
+        language={language}
+      />
     </div>
   );
 };
+

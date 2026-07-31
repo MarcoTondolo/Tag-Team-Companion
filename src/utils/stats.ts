@@ -66,8 +66,9 @@ export function calculateAllStats(players: Player[], matches: Match[], filterPla
     const processTeam = (team: Match['team1'], isWinner: boolean) => {
       const { playerId, heroes } = team;
 
-      // If filtering by specific player, skip other players' teams
-      if (filterPlayerId && filterPlayerId !== 'all' && playerId !== filterPlayerId) {
+      // If filtering by specific player, check if either player on the team matches
+      const teamPlayerIds = [team.playerId, team.player2Id].filter(Boolean) as string[];
+      if (filterPlayerId && filterPlayerId !== 'all' && !teamPlayerIds.includes(filterPlayerId)) {
         return;
       }
 
@@ -128,22 +129,41 @@ export function calculateAllStats(players: Player[], matches: Match[], filterPla
       }
 
       // --- Process Player Stats ---
-      if (playerStatsMap[playerId]) {
-        const pStat = playerStatsMap[playerId];
-        pStat.matchesPlayed += 1;
-        if (isDraw) {
-          pStat.draws += 1;
-        } else if (isWinner) {
-          pStat.wins += 1;
-        } else {
-          pStat.losses += 1;
-        }
+      teamPlayerIds.forEach((pId) => {
+        if (playerStatsMap[pId]) {
+          const pStat = playerStatsMap[pId];
+          pStat.matchesPlayed += 1;
+          if (isDraw) {
+            pStat.draws += 1;
+          } else if (isWinner) {
+            pStat.wins += 1;
+          } else {
+            pStat.losses += 1;
+          }
 
-        // Player's per-character breakdown
-        [hero1Id, hero2Id].forEach((hId) => {
-          if (!pStat.byCharacter[hId]) {
-            pStat.byCharacter[hId] = {
-              heroId: hId,
+          // Player's per-character breakdown
+          [hero1Id, hero2Id].forEach((hId) => {
+            if (!pStat.byCharacter[hId]) {
+              pStat.byCharacter[hId] = {
+                heroId: hId,
+                matchesPlayed: 0,
+                wins: 0,
+                losses: 0,
+                draws: 0,
+                winRate: 0,
+              };
+            }
+            const pCharStat = pStat.byCharacter[hId];
+            pCharStat.matchesPlayed += 1;
+            if (isDraw) pCharStat.draws += 1;
+            else if (isWinner) pCharStat.wins += 1;
+            else pCharStat.losses += 1;
+          });
+
+          // Player's per-composition breakdown
+          if (!pStat.byComposition[compId]) {
+            pStat.byComposition[compId] = {
+              compId,
               matchesPlayed: 0,
               wins: 0,
               losses: 0,
@@ -151,30 +171,13 @@ export function calculateAllStats(players: Player[], matches: Match[], filterPla
               winRate: 0,
             };
           }
-          const pCharStat = pStat.byCharacter[hId];
-          pCharStat.matchesPlayed += 1;
-          if (isDraw) pCharStat.draws += 1;
-          else if (isWinner) pCharStat.wins += 1;
-          else pCharStat.losses += 1;
-        });
-
-        // Player's per-composition breakdown
-        if (!pStat.byComposition[compId]) {
-          pStat.byComposition[compId] = {
-            compId,
-            matchesPlayed: 0,
-            wins: 0,
-            losses: 0,
-            draws: 0,
-            winRate: 0,
-          };
+          const pCompStat = pStat.byComposition[compId];
+          pCompStat.matchesPlayed += 1;
+          if (isDraw) pCompStat.draws += 1;
+          else if (isWinner) pCompStat.wins += 1;
+          else pCompStat.losses += 1;
         }
-        const pCompStat = pStat.byComposition[compId];
-        pCompStat.matchesPlayed += 1;
-        if (isDraw) pCompStat.draws += 1;
-        else if (isWinner) pCompStat.wins += 1;
-        else pCompStat.losses += 1;
-      }
+      });
     };
 
     const team1Winner = match.winnerPlayerId === match.team1.playerId;
