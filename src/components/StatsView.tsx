@@ -71,9 +71,13 @@ export const StatsView: React.FC<StatsViewProps> = ({
           b.heroScore - a.heroScore
       )[0] ?? null;
 
-  const topComp = overallStats.compStats.length > 0
-    ? [...overallStats.compStats].filter(c => c.matchesPlayed > 0).sort((a, b) => b.winRate - a.winRate || b.matchesPlayed - a.matchesPlayed)[0]
-    : null;
+  const topComp = overallStats.compStats
+      .filter(c => c.matchesPlayed >= 0)
+      .map(c => ({
+        ...c,
+        compScore: (c.wins * 100) + c.winRate
+      }))
+      .sort((a, b) => b.compScore - a.compScore)[0] ?? null;
 
   // Sorting function
   const sortStatsList = <T extends { winRate: number; matchesPlayed: number; wins: number }>(list: T[]): T[] => {
