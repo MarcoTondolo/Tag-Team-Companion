@@ -30,6 +30,7 @@ export interface FeyFolkHp {
 
 export interface MatchHeroState {
   heroId: string;
+  image: string;
   currentHp: number; // For non-Fey Folk
   currentPower: number;
   isKo: boolean;

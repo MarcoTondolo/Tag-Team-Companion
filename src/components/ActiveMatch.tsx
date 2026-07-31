@@ -246,7 +246,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
         {/* Header bar of fighter card */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
-            <FighterAvatar heroId={heroData.id} size="md" isKo={heroState.isKo} />
+            <FighterAvatar heroId={heroData.id} image={heroState.image} size="md" isKo={heroState.isKo} />
             <div>
               <h4 className="font-extrabold text-white text-base">{heroData.name}</h4>
               <p className="text-[11px] text-slate-400">{heroData.title[language]}</p>
