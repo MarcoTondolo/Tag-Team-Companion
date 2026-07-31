@@ -131,6 +131,14 @@ export const TRANSLATIONS = {
       rule4: 'La partita termina con la sconfitta K.O. di uno o entrambi i team, oppure per pareggio da mazzo esaurito.',
       specialAbilitiesTitle: 'Abilità & Meccaniche Speciali',
     },
+    pwa: {
+      installApp: 'Installa App',
+      installTitle: 'Installa Tag Team Companion',
+      installDesc: 'Installa l\'applicazione per usarla come WebApp nativa sul tuo dispositivo, anche offline!',
+      installBtn: 'Installa Ora',
+      installed: 'App Installata',
+      iosInstructions: 'Su iOS (Safari): premi Condividi ⎘ e poi "Aggiungi alla schermata Home" ➕',
+    },
   },
   en: {
     appTitle: 'Tag Team Companion',
@@ -261,6 +269,14 @@ export const TRANSLATIONS = {
       rule3: 'Perform Tag actions during your turn to swap your active fighter.',
       rule4: 'Matches end when a team is knocked out, or by declaring a Draw when the deck runs out.',
       specialAbilitiesTitle: 'Abilities & Special Mechanics',
+    },
+    pwa: {
+      installApp: 'Install App',
+      installTitle: 'Install Tag Team Companion',
+      installDesc: 'Install the app on your device for fast, instant access even offline!',
+      installBtn: 'Install Now',
+      installed: 'App Installed',
+      iosInstructions: 'On iOS (Safari): tap the Share button ⎘ then select "Add to Home Screen" ➕',
     },
   },
 } as const;

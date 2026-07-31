@@ -108,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({
           </nav>
 
           {/* Right Controls: Language Switcher */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex items-center bg-slate-800/90 rounded-xl p-1 border border-slate-700/80 text-xs">
               <Globe className="w-3.5 h-3.5 text-slate-400 ml-1.5 mr-1" />
               <button
