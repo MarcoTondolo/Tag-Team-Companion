@@ -201,6 +201,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
         ...hero,
         currentHp: newHp,
         isBearForm: true,
+        image: `${import.meta.env.BASE_URL}heroes/bodvar_bear.png`,
       };
     });
   };

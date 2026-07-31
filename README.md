@@ -18,7 +18,7 @@ All player, match, and statistics data is stored locally on your device / browse
 
 ## Accuracy note
 
-Fighter stats (starting HP and power) were entered manually from the physical fighter boards and may contain small errors. Always double-check against your own components if something looks off — values can be corrected directly in the app.
+Fighter stats (starting HP and power) were entered manually from the physical fighter boards and may contain small errors. Always double-check against your own components if something looks off.
 
 ## Get the official game
 
