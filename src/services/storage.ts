@@ -8,10 +8,7 @@ const STORAGE_KEYS = {
 };
 
 // Initial default players if empty
-const DEFAULT_PLAYERS: Player[] = [
-  { id: 'p1', name: 'Marco', createdAt: new Date().toISOString() },
-  { id: 'p2', name: 'Luca', createdAt: new Date().toISOString() },
-];
+const DEFAULT_PLAYERS: Player[] = [];
 
 export const StorageService = {
   getLanguage(): Language {
@@ -38,7 +35,13 @@ export const StorageService = {
         this.savePlayers(DEFAULT_PLAYERS);
         return DEFAULT_PLAYERS;
       }
-      return JSON.parse(saved);
+      const players: Player[] = JSON.parse(saved);
+      // Remove legacy initial default players (id p1/p2 or name Marco/Luca if default)
+      const filtered = players.filter((p) => p.id !== 'p1' && p.id !== 'p2');
+      if (filtered.length !== players.length) {
+        this.savePlayers(filtered);
+      }
+      return filtered;
     } catch {
       return DEFAULT_PLAYERS;
     }

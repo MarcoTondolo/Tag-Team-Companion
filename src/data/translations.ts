@@ -87,7 +87,7 @@ export const TRANSLATIONS = {
     playersView: {
       title: 'Gestione Giocatori',
       addPlayer: 'Aggiungi Giocatore',
-      playerNamePlaceholder: 'Nome Giocatore (es. Marco)',
+      playerNamePlaceholder: 'Nome Giocatore',
       registeredPlayers: 'Giocatori Registrati',
       statsSummary: 'Riepilogo Statistiche',
       viewPersonalStats: 'Vedi Statistiche Dettagliate',
