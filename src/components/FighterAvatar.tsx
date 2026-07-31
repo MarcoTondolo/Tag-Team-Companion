@@ -170,7 +170,7 @@ export const FighterAvatar: React.FC<FighterAvatarProps> = ({
       >
         {extIndex < extensions.length ? (
           <img
-            src={`/heroes/${hero.id}${extensions[extIndex]}`}
+              src={`${import.meta.env.BASE_URL}heroes/${hero.id}${extensions[extIndex]}`}
             alt={hero.name}
             onError={() => setExtIndex((prev) => prev + 1)}
             className={`w-full h-full object-cover rounded-xl ${isKo ? 'grayscale' : ''}`}

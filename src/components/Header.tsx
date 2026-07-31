@@ -13,7 +13,8 @@ interface HeaderProps {
 
 const AppLogo: React.FC = () => {
   const [srcIndex, setSrcIndex] = React.useState(0);
-  const sources = ['/icon.jpg', '/icon.png', '/favicon.ico'];
+  const base = import.meta.env.BASE_URL;
+  const sources = [`${base}icon.jpg`, `${base}icon.png`, `${base}favicon.ico`];
 
   if (srcIndex >= sources.length) {
     return (
