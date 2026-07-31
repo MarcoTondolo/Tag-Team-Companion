@@ -1,0 +1,6 @@
+{
+  "name": "Tag Team Companion & Stats Tracker",
+  "description": "Companion app for the Tag Team board game to manage live HP and Power, draft heroes, track matches, and analyze player, hero, and team composition statistics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
