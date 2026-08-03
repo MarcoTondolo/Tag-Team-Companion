@@ -893,7 +893,7 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
                   </select>
               ) : (
                   <span className="px-3 py-1.5 bg-rose-950 text-rose-300 border border-rose-800 text-xs font-extrabold rounded-xl w-fit">
-                Bot AI ({aiDifficulty === 'easy' ? 'Facile' : aiDifficulty === 'hard' ? 'Difficile' : 'Normale'})
+                Bot AI ({aiDifficulty === 'easy' ? t.draft.easyLabel : aiDifficulty === 'hard' ? t.draft.hardLabel : t.draft.normalLabel})
               </span>
               )}
             </div>

@@ -29,9 +29,9 @@ export const BotAiAssistantCard: React.FC<BotAiAssistantCardProps> = ({
   const cardCount = cardCountMap[aiDifficulty] || 2;
 
   const diffLabelMap: Record<AiDifficulty, { label: string; color: string }> = {
-    easy: { label: language === 'it' ? 'Facile (1 carta)' : 'Easy (1 card)', color: 'bg-emerald-500 text-slate-950 border-emerald-400' },
-    normal: { label: language === 'it' ? 'Normale (2 carte)' : 'Normal (2 cards)', color: 'bg-amber-500 text-slate-950 border-amber-400' },
-    hard: { label: language === 'it' ? 'Difficile (3 carte)' : 'Hard (3 cards)', color: 'bg-rose-600 text-white border-rose-500' },
+    easy: { label: t.draft.easy, color: 'bg-emerald-500 text-slate-950 border-emerald-400' },
+    normal: { label: t.draft.normal, color: 'bg-amber-500 text-slate-950 border-amber-400' },
+    hard: { label: t.draft.hard, color: 'bg-rose-600 text-white border-rose-500' },
   };
 
   const currentDiff = diffLabelMap[aiDifficulty] || diffLabelMap.normal;

@@ -161,19 +161,37 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
       const hero = { ...newHeroes[heroIndex] };
       if (!hero.feyFolkHp) return prevTeam;
 
+      const prevMember = hero.activeFeyMember;
+      const partnerIndex = heroIndex === 0 ? 1 : 0;
+      let bonusesApplied = { ...(hero.feyFolkBonusesApplied || {}) };
+
+      // If switching from a member that is NOT KO, revert its bonus and reset its applied status
+      if (prevMember && prevMember !== member) {
+        const prevMemberHp = hero.feyFolkHp[prevMember] ?? 0;
+        if (prevMemberHp > 0 && bonusesApplied[prevMember]) {
+          if (prevMember === 'elf') {
+            hero.currentPower = Math.max(0, hero.currentPower - 1);
+          } else if (prevMember === 'gnome' || prevMember === 'fairy') {
+            if (newHeroes[partnerIndex] && !newHeroes[partnerIndex].isKo) {
+              newHeroes[partnerIndex] = {
+                ...newHeroes[partnerIndex],
+                currentPower: Math.max(0, newHeroes[partnerIndex].currentPower - 1),
+              };
+            }
+          }
+          bonusesApplied[prevMember] = false;
+        }
+      }
+
       const memberMaxHp = member === 'elf' ? 5 : member === 'gnome' ? 4 : 3;
-      const currentMemberHp = hero.feyFolkHp[member] || memberMaxHp;
+      const currentMemberHp = hero.feyFolkHp[member] ?? memberMaxHp;
 
       hero.activeFeyMember = member;
       hero.currentHp = currentMemberHp;
 
-      // Apply bonus power ONLY ONCE per member per match
-      const bonusesApplied = hero.feyFolkBonusesApplied || {};
+      // Apply bonus power ONLY ONCE per member per match (unless reset by switching while non-KO)
       if (!bonusesApplied[member]) {
-        hero.feyFolkBonusesApplied = {
-          ...bonusesApplied,
-          [member]: true,
-        };
+        bonusesApplied[member] = true;
 
         // Elf selection gives +1 Power to Fey Folk itself
         if (member === 'elf') {
@@ -182,7 +200,6 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
 
         // Gnome or Fairy selection gives +1 Power to partner hero in same team
         if (member === 'gnome' || member === 'fairy') {
-          const partnerIndex = heroIndex === 0 ? 1 : 0;
           if (newHeroes[partnerIndex] && !newHeroes[partnerIndex].isKo) {
             newHeroes[partnerIndex] = {
               ...newHeroes[partnerIndex],
@@ -192,6 +209,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
         }
       }
 
+      hero.feyFolkBonusesApplied = bonusesApplied;
       newHeroes[heroIndex] = hero;
       return { ...prevTeam, heroes: newHeroes };
     });
