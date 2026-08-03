@@ -285,12 +285,113 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
             </div>
           </div>
 
-          {/* Minimal Control Grid: Vertical HP and Power Containers side-by-side */}
-          <div className="grid grid-cols-2 gap-2">
-            {/* HP TRACKER (VERTICAL) */}
-            {!isFeyFolk && (
+          {/* Control Grid */}
+          {isFeyFolk && heroState.feyFolkHp ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {/* 1. ELF CONTAINER */}
                 <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
-                  {/* Emoji + Counter (No text label) */}
+                  <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-slate-200">
+                    <span>🧝</span>
+                    <span>{heroState.feyFolkHp.elf}</span>
+                    <span className="text-[10px] text-slate-500 font-semibold">/5</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1 w-full">
+                    <button
+                        onClick={() => changeFeySubHp(teamNumber, heroIndex, 'elf', 1)}
+                        className="w-full py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold rounded border border-emerald-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                        title="+1 Elfa HP"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                        onClick={() => changeFeySubHp(teamNumber, heroIndex, 'elf', -1)}
+                        className="w-full py-1 bg-red-950/80 hover:bg-red-900 text-red-300 font-bold rounded border border-red-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                        title="-1 Elfa HP"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. GNOME CONTAINER */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
+                  <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-slate-200">
+                    <span>🧔</span>
+                    <span>{heroState.feyFolkHp.gnome}</span>
+                    <span className="text-[10px] text-slate-500 font-semibold">/4</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1 w-full">
+                    <button
+                        onClick={() => changeFeySubHp(teamNumber, heroIndex, 'gnome', 1)}
+                        className="w-full py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold rounded border border-emerald-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                        title="+1 Gnomo HP"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                        onClick={() => changeFeySubHp(teamNumber, heroIndex, 'gnome', -1)}
+                        className="w-full py-1 bg-red-950/80 hover:bg-red-900 text-red-300 font-bold rounded border border-red-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                        title="-1 Gnomo HP"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. FAIRY CONTAINER */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
+                  <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-slate-200">
+                    <span>🧚</span>
+                    <span>{heroState.feyFolkHp.fairy}</span>
+                    <span className="text-[10px] text-slate-500 font-semibold">/3</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1 w-full">
+                    <button
+                        onClick={() => changeFeySubHp(teamNumber, heroIndex, 'fairy', 1)}
+                        className="w-full py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold rounded border border-emerald-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                        title="+1 Fata HP"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                        onClick={() => changeFeySubHp(teamNumber, heroIndex, 'fairy', -1)}
+                        className="w-full py-1 bg-red-950/80 hover:bg-red-900 text-red-300 font-bold rounded border border-red-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                        title="-1 Fata HP"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. POWER CONTAINER */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
+                  <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-amber-400">
+                    <Zap className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                    <span>{heroState.currentPower}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1 w-full">
+                    <button
+                        onClick={() => changePower(teamNumber, heroIndex, 1)}
+                        className="w-full py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold rounded border border-amber-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                        title="+1 Power"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                        onClick={() => changePower(teamNumber, heroIndex, -1)}
+                        className="w-full py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold rounded border border-amber-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                        title="-1 Power"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+          ) : (
+              /* Standard 2-Container Grid for regular heroes */
+              <div className="grid grid-cols-2 gap-2">
+                {/* HP TRACKER (VERTICAL) */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
                   <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-white">
                     <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500 shrink-0" />
                     <span>{heroState.currentHp}</span>
@@ -298,8 +399,6 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                   /{heroState.isBearForm ? 15 : heroData.maxHp}
                 </span>
                   </div>
-
-                  {/* Stacked Buttons: + on top, - on bottom */}
                   <div className="flex flex-col items-center gap-1 w-full">
                     <button
                         onClick={() => changeHp(teamNumber, heroIndex, 1)}
@@ -317,103 +416,32 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                     </button>
                   </div>
                 </div>
-            )}
 
-            {/* FEY FOLK SPECIAL 3 SUB-TRACKERS COMPACT */}
-            {isFeyFolk && heroState.feyFolkHp && (
-                <div className="bg-teal-950/30 border border-teal-800/50 rounded-lg p-1.5 flex flex-col justify-between gap-1">
-                  <div className="text-[11px] font-black text-teal-300 flex items-center justify-center gap-1">
-                    <Heart className="w-3.5 h-3.5 fill-teal-400 text-teal-400 shrink-0" />
-                    <span>{heroState.currentHp}/12</span>
+                {/* POWER TRACKER (VERTICAL) */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
+                  <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-amber-400">
+                    <Zap className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                    <span>{heroState.currentPower}</span>
                   </div>
-                  <div className="flex flex-col gap-1 w-full">
-                    {/* Elf */}
-                    <div className="bg-slate-900/90 border border-slate-800 rounded p-1 flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-slate-300">🧝 {heroState.feyFolkHp.elf}/5</span>
-                      <div className="flex gap-1">
-                        <button
-                            onClick={() => changeFeySubHp(teamNumber, heroIndex, 'elf', 1)}
-                            className="w-4 h-4 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold flex items-center justify-center cursor-pointer"
-                        >
-                          +
-                        </button>
-                        <button
-                            onClick={() => changeFeySubHp(teamNumber, heroIndex, 'elf', -1)}
-                            className="w-4 h-4 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold flex items-center justify-center cursor-pointer"
-                        >
-                          -
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Gnome */}
-                    <div className="bg-slate-900/90 border border-slate-800 rounded p-1 flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-slate-300">🧔 {heroState.feyFolkHp.gnome}/4</span>
-                      <div className="flex gap-1">
-                        <button
-                            onClick={() => changeFeySubHp(teamNumber, heroIndex, 'gnome', 1)}
-                            className="w-4 h-4 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold flex items-center justify-center cursor-pointer"
-                        >
-                          +
-                        </button>
-                        <button
-                            onClick={() => changeFeySubHp(teamNumber, heroIndex, 'gnome', -1)}
-                            className="w-4 h-4 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold flex items-center justify-center cursor-pointer"
-                        >
-                          -
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Fairy */}
-                    <div className="bg-slate-900/90 border border-slate-800 rounded p-1 flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-slate-300">🧚 {heroState.feyFolkHp.fairy}/3</span>
-                      <div className="flex gap-1">
-                        <button
-                            onClick={() => changeFeySubHp(teamNumber, heroIndex, 'fairy', 1)}
-                            className="w-4 h-4 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold flex items-center justify-center cursor-pointer"
-                        >
-                          +
-                        </button>
-                        <button
-                            onClick={() => changeFeySubHp(teamNumber, heroIndex, 'fairy', -1)}
-                            className="w-4 h-4 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold flex items-center justify-center cursor-pointer"
-                        >
-                          -
-                        </button>
-                      </div>
-                    </div>
+                  <div className="flex flex-col items-center gap-1 w-full">
+                    <button
+                        onClick={() => changePower(teamNumber, heroIndex, 1)}
+                        className="w-full py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold rounded border border-amber-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                        title="+1 Power"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                        onClick={() => changePower(teamNumber, heroIndex, -1)}
+                        className="w-full py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold rounded border border-amber-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                        title="-1 Power"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
-            )}
-
-            {/* POWER TRACKER (VERTICAL) */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
-              {/* Emoji + Counter (No text label) */}
-              <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-amber-400">
-                <Zap className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
-                <span>{heroState.currentPower}</span>
               </div>
-
-              {/* Stacked Buttons: + on top, - on bottom */}
-              <div className="flex flex-col items-center gap-1 w-full">
-                <button
-                    onClick={() => changePower(teamNumber, heroIndex, 1)}
-                    className="w-full py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold rounded border border-amber-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                    title="+1 Power"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-                <button
-                    onClick={() => changePower(teamNumber, heroIndex, -1)}
-                    className="w-full py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold rounded border border-amber-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                    title="-1 Power"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
     );
   };
