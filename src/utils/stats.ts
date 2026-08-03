@@ -3,10 +3,40 @@ import { HEROES, getHeroById } from '../data/heroes';
 
 /**
  * Creates a canonical composition ID from two hero IDs (alphabetical order)
- * e.g. ['wong', 'bodvar'] -> 'bodvar_wong'
+ * e.g. ['wong', 'bodvar'] -> 'bodvar+wong'
  */
 export function getCompId(hero1Id: string, hero2Id: string): string {
-  return [hero1Id, hero2Id].sort().join('_');
+  return [hero1Id, hero2Id].sort().join('+');
+}
+
+/**
+ * Safely extracts hero IDs from a composition ID regardless of delimiter or underscores in hero IDs
+ */
+export function getHeroIdsFromCompId(compId: string): [string, string] {
+  if (compId.includes('+')) {
+    const parts = compId.split('+');
+    return [parts[0] || '', parts[1] || ''];
+  }
+  if (compId.includes('::')) {
+    const parts = compId.split('::');
+    return [parts[0] || '', parts[1] || ''];
+  }
+  // Fallback for legacy compIds generated with '_' (e.g. 'ching_shih_wong' or 'bodvar_wong')
+  const sortedHeroes = [...HEROES].sort((a, b) => b.id.length - a.id.length);
+  const heroesFound: string[] = [];
+  let tempId = compId;
+  for (const h of sortedHeroes) {
+    if (tempId.includes(h.id)) {
+      heroesFound.push(h.id);
+      tempId = tempId.replace(h.id, '');
+      if (heroesFound.length === 2) break;
+    }
+  }
+  if (heroesFound.length === 2) {
+    return [heroesFound[0], heroesFound[1]];
+  }
+  const parts = compId.split('_');
+  return [parts[0] || '', parts[1] || ''];
 }
 
 /**
@@ -164,6 +194,7 @@ export function calculateAllStats(players: Player[], matches: Match[], filterPla
           if (!pStat.byComposition[compId]) {
             pStat.byComposition[compId] = {
               compId,
+              heroIds: [hero1Id, hero2Id].sort() as [string, string],
               matchesPlayed: 0,
               wins: 0,
               losses: 0,

@@ -17,6 +17,7 @@ import { HEROES } from '../data/heroes';
 
 interface FighterAvatarProps {
   heroId: string;
+  image?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showLabel?: boolean;
   isKo?: boolean;
@@ -100,6 +101,7 @@ const colorStyles: Record<string, { bg: string; border: string; text: string; gl
 
 export const FighterAvatar: React.FC<FighterAvatarProps> = ({
   heroId,
+  image,
   size = 'md',
   showLabel = false,
   isKo = false,
@@ -170,7 +172,10 @@ export const FighterAvatar: React.FC<FighterAvatarProps> = ({
       >
         {extIndex < extensions.length ? (
           <img
-              src={`${import.meta.env.BASE_URL}heroes/${hero.id}${extensions[extIndex]}`}
+              src={
+                  image ??
+                  `${import.meta.env.BASE_URL}heroes/${hero.id}${extensions[extIndex]}`
+              }
             alt={hero.name}
             onError={() => setExtIndex((prev) => prev + 1)}
             className={`w-full h-full object-cover rounded-xl ${isKo ? 'grayscale' : ''}`}

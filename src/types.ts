@@ -30,6 +30,7 @@ export interface FeyFolkHp {
 
 export interface MatchHeroState {
   heroId: string;
+  image: string;
   currentHp: number; // For non-Fey Folk
   currentPower: number;
   isKo: boolean;
@@ -72,6 +73,7 @@ export interface Player {
 export interface PlayerStatDetail {
   heroId?: string;
   compId?: string;
+  heroIds?: [string, string];
   matchesPlayed: number;
   wins: number;
   losses: number;

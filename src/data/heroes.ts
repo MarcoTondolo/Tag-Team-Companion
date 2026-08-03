@@ -30,7 +30,7 @@ export const HEROES: Hero[] = [
     },
     startingHp: 11,
     startingPower: 3,
-    maxHp: 15,
+    maxHp: 11,
     hasMaxHpCap: true,
     avatarColor: 'orange',
     iconName: 'shield-alert',
