@@ -47,6 +47,13 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
   const [team1, setTeam1] = useState<PlayerTeam>(initialTeam1);
   const [team2, setTeam2] = useState<PlayerTeam>(initialTeam2);
 
+  // Fey Folk Selection Modal state
+  const [feyModalState, setFeyModalState] = useState<{
+    isOpen: boolean;
+    teamNumber: 1 | 2;
+    heroIndex: number;
+  } | null>(null);
+
   // 3-dots top right menu state
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [actionConfirm, setActionConfirm] = useState<'cancel' | 'reset' | 'draw' | null>(null);
@@ -64,6 +71,27 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
 
   // Track match start time
   const [startTime] = useState<string>(new Date().toISOString());
+
+  // Auto-check if any Fey Folk needs active member selection on start
+  useEffect(() => {
+    if (feyModalState) return;
+
+    // Check team 1
+    team1.heroes.forEach((h, idx) => {
+      if (h.heroId === 'fey_folk' && !h.activeFeyMember && !h.isKo) {
+        setFeyModalState({ isOpen: true, teamNumber: 1, heroIndex: idx });
+        return;
+      }
+    });
+
+    // Check team 2
+    team2.heroes.forEach((h, idx) => {
+      if (h.heroId === 'fey_folk' && !h.activeFeyMember && !h.isKo) {
+        setFeyModalState({ isOpen: true, teamNumber: 2, heroIndex: idx });
+        return;
+      }
+    });
+  }, [team1, team2, feyModalState]);
 
   // Check if both heroes in a team are KO
   const isTeam1AllKo = team1.heroes.every((h) => h.isKo);
@@ -110,7 +138,6 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
         const totalFeyHp =
             updated.feyFolkHp.elf + updated.feyFolkHp.gnome + updated.feyFolkHp.fairy;
         updated.isKo = totalFeyHp <= 0;
-        updated.currentHp = totalFeyHp;
       } else if (updated.heroId !== 'fey_folk') {
         updated.isKo = updated.currentHp <= 0;
       }
@@ -120,73 +147,149 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
     });
   };
 
-  // HP Change helper
-  const changeHp = (teamNumber: 1 | 2, heroIndex: number, delta: number) => {
-    updateHero(teamNumber, heroIndex, (hero) => {
-      const heroData = getHeroById(hero.heroId);
-      const maxHpCap = heroData?.maxHp || 99;
+  // Fey Folk selection handler:
+  // Apply bonus power ONLY ONCE per match when selecting member
+  const handleSelectFeyMember = (
+      teamNumber: 1 | 2,
+      heroIndex: number,
+      member: 'elf' | 'gnome' | 'fairy'
+  ) => {
+    const setTeam = teamNumber === 1 ? setTeam1 : setTeam2;
 
-      if (hero.heroId === 'fey_folk' && hero.feyFolkHp) {
-        // Distribute delta across fey folk parts (elf first, gnome second, fairy last)
-        let { elf, gnome, fairy } = hero.feyFolkHp;
-        if (delta > 0) {
-          // Heal
-          if (fairy < 3) fairy = Math.min(3, fairy + delta);
-          else if (gnome < 4) gnome = Math.min(4, gnome + delta);
-          else if (elf < 5) elf = Math.min(5, elf + delta);
-        } else {
-          // Damage
-          let remainingDamage = Math.abs(delta);
-          if (fairy > 0) {
-            const dmg = Math.min(fairy, remainingDamage);
-            fairy -= dmg;
-            remainingDamage -= dmg;
-          }
-          if (remainingDamage > 0 && gnome > 0) {
-            const dmg = Math.min(gnome, remainingDamage);
-            gnome -= dmg;
-            remainingDamage -= dmg;
-          }
-          if (remainingDamage > 0 && elf > 0) {
-            const dmg = Math.min(elf, remainingDamage);
-            elf -= dmg;
+    setTeam((prevTeam) => {
+      const newHeroes = [...prevTeam.heroes];
+      const hero = { ...newHeroes[heroIndex] };
+      if (!hero.feyFolkHp) return prevTeam;
+
+      const memberMaxHp = member === 'elf' ? 5 : member === 'gnome' ? 4 : 3;
+      const currentMemberHp = hero.feyFolkHp[member] || memberMaxHp;
+
+      hero.activeFeyMember = member;
+      hero.currentHp = currentMemberHp;
+
+      // Apply bonus power ONLY ONCE per member per match
+      const bonusesApplied = hero.feyFolkBonusesApplied || {};
+      if (!bonusesApplied[member]) {
+        hero.feyFolkBonusesApplied = {
+          ...bonusesApplied,
+          [member]: true,
+        };
+
+        // Elf selection gives +1 Power to Fey Folk itself
+        if (member === 'elf') {
+          hero.currentPower += 1;
+        }
+
+        // Gnome or Fairy selection gives +1 Power to partner hero in same team
+        if (member === 'gnome' || member === 'fairy') {
+          const partnerIndex = heroIndex === 0 ? 1 : 0;
+          if (newHeroes[partnerIndex] && !newHeroes[partnerIndex].isKo) {
+            newHeroes[partnerIndex] = {
+              ...newHeroes[partnerIndex],
+              currentPower: newHeroes[partnerIndex].currentPower + 1,
+            };
           }
         }
-        return {
-          ...hero,
-          feyFolkHp: { elf, gnome, fairy },
-        };
       }
 
-      const newHp = Math.max(0, hero.currentHp + delta);
-      // Bodvar max HP cap is 15 in bear form or 11 base
-      const maxLimit = hero.heroId === 'bodvar' && hero.isBearForm ? 15 : maxHpCap;
-      const cappedHp = Math.min(maxLimit, newHp);
+      newHeroes[heroIndex] = hero;
+      return { ...prevTeam, heroes: newHeroes };
+    });
 
-      return { ...hero, currentHp: cappedHp };
+    setFeyModalState(null);
+  };
+
+  // Direct HP adjustment inside modal for fixing errors
+  const adjustFeySubHpInModal = (
+      teamNumber: 1 | 2,
+      heroIndex: number,
+      member: 'elf' | 'gnome' | 'fairy',
+      delta: number
+  ) => {
+    const setTeam = teamNumber === 1 ? setTeam1 : setTeam2;
+
+    setTeam((prevTeam) => {
+      const newHeroes = [...prevTeam.heroes];
+      const hero = { ...newHeroes[heroIndex] };
+      if (!hero.feyFolkHp) return prevTeam;
+
+      const maxHp = member === 'elf' ? 5 : member === 'gnome' ? 4 : 3;
+      const currentSubHp = hero.feyFolkHp[member] ?? maxHp;
+      const nextSubHp = Math.max(0, Math.min(maxHp, currentSubHp + delta));
+
+      const updatedFeyHp = {
+        ...hero.feyFolkHp,
+        [member]: nextSubHp,
+      };
+
+      const totalFeyHp = updatedFeyHp.elf + updatedFeyHp.gnome + updatedFeyHp.fairy;
+
+      hero.feyFolkHp = updatedFeyHp;
+      hero.isKo = totalFeyHp <= 0;
+
+      // If adjusted member is currently active, sync currentHp
+      if (hero.activeFeyMember === member) {
+        hero.currentHp = nextSubHp;
+        if (nextSubHp === 0) {
+          hero.activeFeyMember = null;
+        }
+      }
+
+      newHeroes[heroIndex] = hero;
+      return { ...prevTeam, heroes: newHeroes };
     });
   };
 
-  // Fey Folk individual sub-tracker HP change
-  const changeFeySubHp = (
-      teamNumber: 1 | 2,
-      heroIndex: number,
-      part: 'elf' | 'gnome' | 'fairy',
-      delta: number
-  ) => {
-    updateHero(teamNumber, heroIndex, (hero) => {
-      if (!hero.feyFolkHp) return hero;
-      const limits = { elf: 5, gnome: 4, fairy: 3 };
-      const current = hero.feyFolkHp[part];
-      const next = Math.max(0, Math.min(limits[part], current + delta));
+  // HP Change helper
+  const changeHp = (teamNumber: 1 | 2, heroIndex: number, delta: number) => {
+    const team = teamNumber === 1 ? team1 : team2;
+    const hero = team.heroes[heroIndex];
 
-      return {
-        ...hero,
-        feyFolkHp: {
-          ...hero.feyFolkHp,
-          [part]: next,
-        },
+    if (hero.heroId === 'fey_folk' && hero.feyFolkHp) {
+      const activeMember = hero.activeFeyMember;
+      if (!activeMember) {
+        setFeyModalState({ isOpen: true, teamNumber, heroIndex });
+        return;
+      }
+
+      const memberMaxHp = activeMember === 'elf' ? 5 : activeMember === 'gnome' ? 4 : 3;
+      const currentMemberHp = hero.feyFolkHp[activeMember];
+      const nextHp = Math.max(0, Math.min(memberMaxHp, currentMemberHp + delta));
+
+      const updatedFeyHp = {
+        ...hero.feyFolkHp,
+        [activeMember]: nextHp,
       };
+
+      const totalFeyHp = updatedFeyHp.elf + updatedFeyHp.gnome + updatedFeyHp.fairy;
+      const isFullyKo = totalFeyHp <= 0;
+
+      updateHero(teamNumber, heroIndex, (h) => ({
+        ...h,
+        feyFolkHp: updatedFeyHp,
+        currentHp: nextHp,
+        isKo: isFullyKo,
+        activeFeyMember: nextHp === 0 ? null : activeMember,
+      }));
+
+      // If active member died but other members still alive, open popup modal to select next member!
+      if (nextHp === 0 && !isFullyKo) {
+        setTimeout(() => {
+          setFeyModalState({ isOpen: true, teamNumber, heroIndex });
+        }, 150);
+      }
+      return;
+    }
+
+    // Regular hero HP change
+    updateHero(teamNumber, heroIndex, (h) => {
+      const heroData = getHeroById(h.heroId);
+      const maxHpCap = heroData?.maxHp || 99;
+      const newHp = Math.max(0, h.currentHp + delta);
+      const maxLimit = h.heroId === 'bodvar' && h.isBearForm ? 15 : maxHpCap;
+      const cappedHp = Math.min(maxLimit, newHp);
+
+      return { ...h, currentHp: cappedHp };
     });
   };
 
@@ -198,8 +301,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
     }));
   };
 
-  // Bodvar Bear Transformation Mechanic:
-  // "when becomes bear gains HP equal to his power and has a maximum of 15 HP"
+  // Bodvar Bear Transformation
   const handleBodvarTransform = (teamNumber: 1 | 2, heroIndex: number) => {
     updateHero(teamNumber, heroIndex, (hero) => {
       const addedHp = hero.currentPower;
@@ -251,6 +353,26 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
     const isBodvar = heroData.id === 'bodvar';
     const isFeyFolk = heroData.id === 'fey_folk';
 
+    // Calculate Fey Folk member max HP and badge
+    let activeMemberLabel = '';
+    let maxHpVal = heroState.isBearForm ? 15 : heroData.maxHp;
+
+    if (isFeyFolk) {
+      if (heroState.activeFeyMember === 'elf') {
+        maxHpVal = 5;
+        activeMemberLabel = `🧝 ${t.activeMatch.elf}`;
+      } else if (heroState.activeFeyMember === 'gnome') {
+        maxHpVal = 4;
+        activeMemberLabel = `🧔 ${t.activeMatch.gnome}`;
+      } else if (heroState.activeFeyMember === 'fairy') {
+        maxHpVal = 3;
+        activeMemberLabel = `🧚 ${t.activeMatch.fairy}`;
+      } else {
+        maxHpVal = 0;
+        activeMemberLabel = `❓ ${t.common.select || 'Seleziona'}`;
+      }
+    }
+
     return (
         <div
             key={`team-${teamNumber}-hero-${heroState.heroId}-${heroIndex}`}
@@ -258,190 +380,99 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                 heroState.isKo ? 'bg-slate-900/60 border-red-900/50 opacity-60' : ''
             }`}
         >
-          {/* Minimal Header: Avatar, Name & Bear transform */}
+          {/* Header: Avatar, Name & Action Button underneath */}
           <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-800/80">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0">
               <FighterAvatar heroId={heroData.id} image={heroState.image} size="md" isKo={heroState.isKo} />
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="font-extrabold text-white text-xs sm:text-sm truncate">{heroData.name}</h4>
-                  {isBodvar && (
-                      <button
-                          onClick={() => handleBodvarTransform(teamNumber, heroIndex)}
-                          disabled={heroState.isBearForm}
-                          className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md border flex items-center gap-1 cursor-pointer transition-all ${
-                              heroState.isBearForm
-                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 opacity-90'
-                                  : 'bg-orange-950/80 hover:bg-orange-900 text-orange-300 border-orange-800/60'
-                          }`}
-                          title="Bear Form (+Power HP, max 15)"
-                      >
-                        <span>🐻</span>
-                        <span>{heroState.isBearForm ? 'Bear' : '+Bear'}</span>
-                      </button>
-                  )}
-                </div>
+              <div className="min-w-0 flex flex-col justify-center">
+                <h4 className="font-extrabold text-white text-xs sm:text-sm truncate">{heroData.name}</h4>
+                {isBodvar && (
+                    <button
+                        onClick={() => handleBodvarTransform(teamNumber, heroIndex)}
+                        disabled={heroState.isBearForm}
+                        className={`mt-1 self-start px-2 py-0.5 text-[10px] font-bold rounded-md border flex items-center gap-1 cursor-pointer transition-all ${
+                            heroState.isBearForm
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 opacity-90'
+                                : 'bg-orange-950/80 hover:bg-orange-900 text-orange-300 border-orange-800/60'
+                        }`}
+                        title="Bear Form (+Power HP, max 15)"
+                    >
+                      <span>🐻</span>
+                      <span>{heroState.isBearForm ? 'Bear' : '+Bear'}</span>
+                    </button>
+                )}
+                {isFeyFolk && (
+                    <button
+                        type="button"
+                        onClick={() => setFeyModalState({ isOpen: true, teamNumber, heroIndex })}
+                        className="mt-1 self-start px-2 py-0.5 text-[10px] font-bold rounded-md border flex items-center gap-1 cursor-pointer transition-all text-amber-300 bg-amber-950/80 hover:bg-amber-900 border-amber-800/60"
+                        title="Seleziona Membro del Popolo Fatato"
+                    >
+                      <span>{activeMemberLabel}</span>
+                    </button>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Control Grid */}
-          {isFeyFolk && heroState.feyFolkHp ? (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {/* 1. ELF CONTAINER */}
-                <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
-                  <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-slate-200">
-                    <span>🧝</span>
-                    <span>{heroState.feyFolkHp.elf}</span>
-                    <span className="text-[10px] text-slate-500 font-semibold">/5</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1 w-full">
-                    <button
-                        onClick={() => changeFeySubHp(teamNumber, heroIndex, 'elf', 1)}
-                        className="w-full py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold rounded border border-emerald-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                        title="+1 Elfa HP"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                        onClick={() => changeFeySubHp(teamNumber, heroIndex, 'elf', -1)}
-                        className="w-full py-1 bg-red-950/80 hover:bg-red-900 text-red-300 font-bold rounded border border-red-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                        title="-1 Elfa HP"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* 2. GNOME CONTAINER */}
-                <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
-                  <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-slate-200">
-                    <span>🧔</span>
-                    <span>{heroState.feyFolkHp.gnome}</span>
-                    <span className="text-[10px] text-slate-500 font-semibold">/4</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1 w-full">
-                    <button
-                        onClick={() => changeFeySubHp(teamNumber, heroIndex, 'gnome', 1)}
-                        className="w-full py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold rounded border border-emerald-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                        title="+1 Gnomo HP"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                        onClick={() => changeFeySubHp(teamNumber, heroIndex, 'gnome', -1)}
-                        className="w-full py-1 bg-red-950/80 hover:bg-red-900 text-red-300 font-bold rounded border border-red-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                        title="-1 Gnomo HP"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* 3. FAIRY CONTAINER */}
-                <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
-                  <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-slate-200">
-                    <span>🧚</span>
-                    <span>{heroState.feyFolkHp.fairy}</span>
-                    <span className="text-[10px] text-slate-500 font-semibold">/3</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1 w-full">
-                    <button
-                        onClick={() => changeFeySubHp(teamNumber, heroIndex, 'fairy', 1)}
-                        className="w-full py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold rounded border border-emerald-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                        title="+1 Fata HP"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                        onClick={() => changeFeySubHp(teamNumber, heroIndex, 'fairy', -1)}
-                        className="w-full py-1 bg-red-950/80 hover:bg-red-900 text-red-300 font-bold rounded border border-red-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                        title="-1 Fata HP"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* 4. POWER CONTAINER */}
-                <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
-                  <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-amber-400">
-                    <Zap className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
-                    <span>{heroState.currentPower}</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1 w-full">
-                    <button
-                        onClick={() => changePower(teamNumber, heroIndex, 1)}
-                        className="w-full py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold rounded border border-amber-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                        title="+1 Power"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                        onClick={() => changePower(teamNumber, heroIndex, -1)}
-                        className="w-full py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold rounded border border-amber-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                        title="-1 Power"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
+          {/* Standard 2-Container Grid (HP + POWER) for ALL fighters */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* HP TRACKER CONTAINER */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
+              {/* Heart Icon + HP Counter */}
+              <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-white">
+                <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500 shrink-0" />
+                <span>{heroState.currentHp}</span>
+                <span className="text-[10px] text-slate-500 font-semibold">
+                /{maxHpVal}
+              </span>
               </div>
-          ) : (
-              /* Standard 2-Container Grid for regular heroes */
-              <div className="grid grid-cols-2 gap-2">
-                {/* HP TRACKER (VERTICAL) */}
-                <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
-                  <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-white">
-                    <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500 shrink-0" />
-                    <span>{heroState.currentHp}</span>
-                    <span className="text-[10px] text-slate-500 font-semibold">
-                  /{heroState.isBearForm ? 15 : heroData.maxHp}
-                </span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1 w-full">
-                    <button
-                        onClick={() => changeHp(teamNumber, heroIndex, 1)}
-                        className="w-full py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold rounded border border-emerald-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                        title="+1 HP"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                        onClick={() => changeHp(teamNumber, heroIndex, -1)}
-                        className="w-full py-1 bg-red-950/80 hover:bg-red-900 text-red-300 font-bold rounded border border-red-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                        title="-1 HP"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
 
-                {/* POWER TRACKER (VERTICAL) */}
-                <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
-                  <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-amber-400">
-                    <Zap className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
-                    <span>{heroState.currentPower}</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1 w-full">
-                    <button
-                        onClick={() => changePower(teamNumber, heroIndex, 1)}
-                        className="w-full py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold rounded border border-amber-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                        title="+1 Power"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                        onClick={() => changePower(teamNumber, heroIndex, -1)}
-                        className="w-full py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold rounded border border-amber-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                        title="-1 Power"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
+              {/* Stacked HP Buttons */}
+              <div className="flex flex-col items-center gap-1 w-full">
+                <button
+                    onClick={() => changeHp(teamNumber, heroIndex, 1)}
+                    className="w-full py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold rounded border border-emerald-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                    title="+1 HP"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+                <button
+                    onClick={() => changeHp(teamNumber, heroIndex, -1)}
+                    className="w-full py-1 bg-red-950/80 hover:bg-red-900 text-red-300 font-bold rounded border border-red-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                    title="-1 HP"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
               </div>
-          )}
+            </div>
+
+            {/* POWER TRACKER CONTAINER */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
+              <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-amber-400">
+                <Zap className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                <span>{heroState.currentPower}</span>
+              </div>
+
+              {/* Stacked Power Buttons */}
+              <div className="flex flex-col items-center gap-1 w-full">
+                <button
+                    onClick={() => changePower(teamNumber, heroIndex, 1)}
+                    className="w-full py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold rounded border border-amber-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                    title="+1 Power"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+                <button
+                    onClick={() => changePower(teamNumber, heroIndex, -1)}
+                    className="w-full py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold rounded border border-amber-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                    title="-1 Power"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
     );
   };
@@ -489,7 +520,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                       className="w-full text-left px-4 py-2.5 text-xs font-semibold text-blue-400 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
                   >
                     <Award className="w-4 h-4" />
-                    Win for {team1.playerName}
+                    {t.activeMatch.winForPlayer.replace('{name}', team1.playerName)}
                   </button>
 
                   <button
@@ -500,7 +531,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                       className="w-full text-left px-4 py-2.5 text-xs font-semibold text-rose-400 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
                   >
                     <Award className="w-4 h-4" />
-                    Win for {team2.playerName}
+                    {t.activeMatch.winForPlayer.replace('{name}', team2.playerName)}
                   </button>
 
                   <div className="border-t border-slate-800 my-1" />
@@ -524,7 +555,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                       className="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-400 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
                   >
                     <X className="w-4 h-4" />
-                    Cancel Match
+                    {t.activeMatch.cancelMatchConfirmTitle}
                   </button>
                 </div>
             )}
@@ -552,7 +583,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
               </div>
               {isTeam1AllKo && (
                   <span className="px-2.5 py-0.5 bg-red-950 text-red-400 border border-red-800 text-[11px] font-bold rounded-lg">
-                ALL K.O.
+                {t.activeMatch.allKo}
               </span>
               )}
             </div>
@@ -573,7 +604,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
               </div>
               {isTeam2AllKo && (
                   <span className="px-2.5 py-0.5 bg-red-950 text-red-400 border border-red-800 text-[11px] font-bold rounded-lg">
-                ALL K.O.
+                {t.activeMatch.allKo}
               </span>
               )}
             </div>
@@ -583,6 +614,157 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
             </div>
           </div>
         </div>
+
+        {/* FEY FOLK MEMBER SELECTION POPUP MODAL */}
+        {feyModalState?.isOpen && (
+            <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl animate-in fade-in zoom-in-95">
+                <div className="relative text-center space-y-1">
+                  <button
+                      type="button"
+                      onClick={() => setFeyModalState(null)}
+                      className="absolute -top-1 -right-1 p-1 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
+                      title={t.common.cancel}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <h3 className="text-xl font-black text-amber-400 flex items-center justify-center gap-2 pr-6">
+                    {t.activeMatch.selectFeyTitle}
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    {t.activeMatch.selectFeyDesc}
+                  </p>
+                </div>
+
+                {(() => {
+                  const team = feyModalState.teamNumber === 1 ? team1 : team2;
+                  const heroState = team.heroes[feyModalState.heroIndex];
+                  const feyHp = heroState?.feyFolkHp || { elf: 5, gnome: 4, fairy: 3 };
+
+                  const options = [
+                    {
+                      key: 'elf' as const,
+                      name: t.activeMatch.elf,
+                      emoji: '🧝',
+                      currentHp: feyHp.elf,
+                      maxHp: 5,
+                      bonusText: t.activeMatch.elfBonusDesc,
+                    },
+                    {
+                      key: 'gnome' as const,
+                      name: t.activeMatch.gnome,
+                      emoji: '🧔',
+                      currentHp: feyHp.gnome,
+                      maxHp: 4,
+                      bonusText: t.activeMatch.gnomeBonusDesc,
+                    },
+                    {
+                      key: 'fairy' as const,
+                      name: t.activeMatch.fairy,
+                      emoji: '🧚',
+                      currentHp: feyHp.fairy,
+                      maxHp: 3,
+                      bonusText: t.activeMatch.fairyBonusDesc,
+                    },
+                  ];
+
+                  return (
+                      <div className="space-y-3">
+                        {options.map((opt) => {
+                          const isDead = opt.currentHp <= 0;
+                          const isActive = heroState?.activeFeyMember === opt.key;
+
+                          return (
+                              <div
+                                  key={opt.key}
+                                  onClick={() => {
+                                    if (!isDead) {
+                                      handleSelectFeyMember(
+                                          feyModalState.teamNumber,
+                                          feyModalState.heroIndex,
+                                          opt.key
+                                      );
+                                    }
+                                  }}
+                                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between gap-3 transition-all ${
+                                      isDead
+                                          ? 'bg-slate-950/60 border-slate-800/80 opacity-60'
+                                          : isActive
+                                              ? 'bg-amber-950/40 border-amber-500/80 ring-2 ring-amber-500/30 cursor-pointer'
+                                              : 'bg-slate-800/90 hover:bg-slate-800 border-slate-700 hover:border-amber-500/50 cursor-pointer'
+                                  }`}
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className="text-2xl shrink-0">{opt.emoji}</span>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-extrabold text-white text-sm">{opt.name}</span>
+                                      {isDead && (
+                                          <span className="px-1.5 py-0.2 bg-red-950 text-red-400 border border-red-800 text-[10px] font-bold rounded">
+                                  {t.activeMatch.koMember}
+                                </span>
+                                      )}
+                                      {isActive && !isDead && (
+                                          <span className="px-1.5 py-0.2 bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold rounded">
+                                  {t.activeMatch.activeMember}
+                                </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">{opt.bonusText}</p>
+                                  </div>
+                                </div>
+
+                                {/* Right side: HP controls with + and - buttons */}
+                                <div className="flex items-center gap-1.5 shrink-0 bg-slate-950/80 p-1.5 rounded-xl border border-slate-800">
+                                  <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        adjustFeySubHpInModal(
+                                            feyModalState.teamNumber,
+                                            feyModalState.heroIndex,
+                                            opt.key,
+                                            -1
+                                        );
+                                      }}
+                                      className="w-7 h-7 bg-red-950/80 hover:bg-red-900 text-red-300 font-bold rounded-lg border border-red-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
+                                      title="-1 HP"
+                                  >
+                                    <Minus className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  <div className="flex items-center gap-0.5 px-1 min-w-[36px] justify-center text-xs font-black text-white">
+                                    <Heart className="w-3 h-3 fill-red-500 text-red-500 shrink-0" />
+                                    <span>{opt.currentHp}</span>
+                                    <span className="text-[10px] text-slate-500 font-normal">/{opt.maxHp}</span>
+                                  </div>
+
+                                  <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        adjustFeySubHpInModal(
+                                            feyModalState.teamNumber,
+                                            feyModalState.heroIndex,
+                                            opt.key,
+                                            1
+                                        );
+                                      }}
+                                      className="w-7 h-7 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold rounded-lg border border-emerald-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
+                                      title="+1 HP"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                          );
+                        })}
+                      </div>
+                  );
+                })()}
+              </div>
+            </div>
+        )}
 
         {/* END MATCH / WINNER MODAL */}
         {winnerModal.isOpen && (
@@ -642,14 +824,14 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
 
                 <div className="space-y-1">
                   <h3 className="text-lg font-extrabold text-white">
-                    {actionConfirm === 'cancel' && (language === 'it' ? 'Annulla Partita' : 'Cancel Match')}
-                    {actionConfirm === 'reset' && (language === 'it' ? 'Ripristina Partita' : 'Reset Match')}
-                    {actionConfirm === 'draw' && (language === 'it' ? 'Dichiara Pareggio' : 'Declare Draw')}
+                    {actionConfirm === 'cancel' && t.activeMatch.cancelMatchConfirmTitle}
+                    {actionConfirm === 'reset' && t.activeMatch.resetMatchConfirmTitle}
+                    {actionConfirm === 'draw' && t.activeMatch.declareDraw}
                   </h3>
                   <p className="text-xs text-slate-400">
-                    {actionConfirm === 'cancel' && (language === 'it' ? 'Vuoi davvero annullare la partita e tornare al menu?' : 'Cancel active match and return to setup?')}
-                    {actionConfirm === 'reset' && (language === 'it' ? 'Ripristinare tutti i punti vita e la forza ai valori iniziali?' : 'Reset all HP and Power values to match defaults?')}
-                    {actionConfirm === 'draw' && (language === 'it' ? 'Confermi di voler concludere la partita in pareggio?' : t.activeMatch.confirmDraw)}
+                    {actionConfirm === 'cancel' && t.activeMatch.cancelMatchConfirmDesc}
+                    {actionConfirm === 'reset' && t.activeMatch.resetMatchConfirmDesc}
+                    {actionConfirm === 'draw' && t.activeMatch.confirmDraw}
                   </p>
                 </div>
 
@@ -678,7 +860,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                               : 'bg-amber-500 hover:bg-amber-400 text-slate-950'
                       }`}
                   >
-                    {language === 'it' ? 'Conferma' : 'Confirm'}
+                    {t.activeMatch.confirm}
                   </button>
                 </div>
               </div>

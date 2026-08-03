@@ -37,7 +37,7 @@ export interface MatchHeroState {
   // Special mechanic states
   feyFolkHp?: FeyFolkHp;
   activeFeyMember?: 'elf' | 'gnome' | 'fairy' | null;
-  feyFolkBonusApplied?: boolean;
+  feyFolkBonusesApplied?: { elf?: boolean; gnome?: boolean; fairy?: boolean };
   isBearForm?: boolean; // For Bodvar
 }
 
