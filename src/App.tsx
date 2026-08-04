@@ -174,6 +174,9 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4">
           Tag Team Board Game Companion & Analytics
         </div>
+        <div className="max-w-7xl mx-auto px-4">
+          by Marco Tondolo
+        </div>
       </footer>
     </div>
   );

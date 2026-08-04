@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Bot, BookOpen, ShieldAlert, Zap, Award, Sparkles, CheckCircle2, HelpCircle } from 'lucide-react';
+import { X, Flame, ShieldAlert, BookOpen, Heart, Zap, Award, Sparkles, Crosshair, RefreshCw } from 'lucide-react';
 import { Language } from '../types';
 
 interface SoloRulesModalProps {
@@ -20,15 +20,15 @@ export const SoloRulesModal: React.FC<SoloRulesModalProps> = ({ isOpen, onClose,
         {/* Modal Header */}
         <div className="p-5 sm:p-6 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-400 rounded-2xl border border-amber-500/30">
-              <Bot className="w-6 h-6" />
+            <div className="p-2.5 bg-gradient-to-br from-amber-500/20 to-red-500/20 text-amber-400 rounded-2xl border border-amber-500/30">
+              <Flame className="w-6 h-6 text-orange-400" />
             </div>
             <div>
               <h3 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
-                {isIt ? 'Regolamento Solitario Tag Team (vs AI)' : 'Tag Team Solo Rules (vs AI)'}
+                {isIt ? 'Regolamento: Il Circuito Clandestino' : 'Rules: The Underground Circuit'}
               </h3>
               <p className="text-xs text-amber-400 font-semibold">
-                {isIt ? 'di Michael Kelley (One Stop Co-Op Shop)' : 'by Michael Kelley (One Stop Co-Op Shop)'}
+                {isIt ? 'Modalità Solitario con Barra HP dell\'Ondata & Threat Deck' : 'Solo Wave HP Bar & Threat Deck Mode'}
               </p>
             </div>
           </div>
@@ -43,222 +43,225 @@ export const SoloRulesModal: React.FC<SoloRulesModalProps> = ({ isOpen, onClose,
         {/* Modal Scrollable Body */}
         <div className="p-5 sm:p-6 overflow-y-auto space-y-6 text-sm text-slate-300 leading-relaxed custom-scrollbar">
           
-          {/* Section 1: Preparazione e Draft */}
+          {/* L'Idea & Concetto Base */}
           <section className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
             <h4 className="text-base font-extrabold text-amber-400 flex items-center gap-2">
               <Sparkles className="w-5 h-5" />
-              {isIt ? '1. Preparazione & Draft' : '1. Setup & Draft'}
+              {isIt ? '1. Concept & Regole Base' : '1. Concept & Basic Rules'}
             </h4>
-            <ul className="list-disc list-inside space-y-2 text-xs sm:text-sm text-slate-300">
-              <li>
-                <strong>{isIt ? 'Pesca 6 Lottatori:' : 'Draw 6 Fighters:'}</strong> {isIt ? 'Pesca 6 dei 12 lottatori disponibili nel roster.' : 'Draw 6 of the 12 available fighters.'}
-              </li>
-              <li>
-                <strong>{isIt ? 'Crea 2 Coppie:' : 'Form 2 Pairs:'}</strong> {isIt ? 'Crea 2 coppie equilibrate e sinergiche con i 6 lottatori pescati.' : 'Form 2 balanced, synergistic pairs using the 6 drawn fighters.'}
-              </li>
-              <li>
-                <strong>{isIt ? 'Assegnazione Casuale:' : 'Random Assignment:'}</strong> {isIt ? 'Mescola 1 carta da ciascuna coppia e pescane 1 a caso: quella sarà la TUA coppia, mentre il Bot controllerà l\'altra.' : 'Shuffle 1 card from each pair and pick 1 at random: that becomes YOUR pair, while the Bot controls the other.'}
-              </li>
-              <li>
-                <strong>{isIt ? 'Preparazione Mazzo:' : 'Deck Setup:'}</strong> {isIt ? 'Prepara il gioco normalmente e mescola le 2 carte iniziali del Bot.' : 'Set up the game as usual and shuffle the Bot\'s 2 starting cards.'}
-              </li>
-            </ul>
-            <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-300">
-              💡 <em>{isIt ? 'Nota:' : 'Note:'}</em> {isIt ? 'Puoi escludere i lottatori meno adatti al Bot prima di pescare i 6 lottatori.' : 'You can exclude fighters less suited for Bot play before drawing your 6 fighters.'}
+            <p className="text-xs sm:text-sm">
+              {isIt
+                ? 'Il tuo Tag Team si fa strada attraverso un circuito di incontri clandestini sempre più duri, senza mai tornare negli spogliatoi per un recupero completo. Non piloti un vero avversario: affronti un Threat Deck (Mazzo di Minaccia) generico che si pesca ad ogni turno e una Barra HP dell\'Ondata astratta.'
+                : 'Your Tag Team fights through a circuit of increasingly brutal underground matches without returning for full recovery. You face a Threat Deck auto-drawn each round and an abstract Wave HP Bar.'}
+            </p>
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300 font-medium">
+              ⚡ <strong>{isIt ? 'Il Twist Principale:' : 'Main Twist:'}</strong>{' '}
+              {isIt
+                ? 'HP e potere non si resettano mai del tutto tra un\'ondata e l\'altra. Gestire la resistenza a lungo termine conta quanto le singole mosse.'
+                : 'HP and Power never fully reset between waves! Long-term endurance management matters as much as individual moves.'}
             </div>
           </section>
 
-          {/* Section 2: Fase di Costruzione & Difficoltà */}
+          {/* Barra HP Ondata */}
+          <section className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
+            <h4 className="text-base font-extrabold text-amber-400 flex items-center gap-2">
+              <Crosshair className="w-5 h-5" />
+              {isIt ? '2. La Barra HP dell\'Ondata (Come Attaccare)' : '2. Wave HP Bar (How to Attack)'}
+            </h4>
+            <p className="text-xs sm:text-sm">
+              {isIt
+                ? 'Ogni Ondata ha una propria riserva di HP. Quando nel Fight Step giochi una carta d\'attacco, il danno non va a un lottatore specifico dell\'avversario, ma si sottrae direttamente dagli HP dell\'Ondata. Tutto il resto funziona come da regolamento normale (blocchi, potere speso per effetti, ecc.).'
+                : 'Each Wave has its own HP pool. In the Fight Step, your attack damage directly subtracts from the Wave\'s HP. Blocks and power effects function as usual.'}
+            </p>
+            <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 font-bold">
+              🎯 {isIt ? 'Superare un\'Ondata = portare i suoi HP a 0 prima che uno dei tuoi due lottatori vada KO!' : 'Clear a Wave = reduce its HP to 0 before any of your 2 fighters go KO!'}
+            </div>
+          </section>
+
+          {/* Setup & Difficoltà */}
           <section className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
             <h4 className="text-base font-extrabold text-amber-400 flex items-center gap-2">
               <BookOpen className="w-5 h-5" />
-              {isIt ? '2. Fase di Costruzione & Livelli di Difficoltà' : '2. Building Phase & Difficulty Levels'}
+              {isIt ? '3. Setup & Difficoltà Iniziale' : '3. Setup & Initial Difficulty'}
             </h4>
-            <p className="text-xs sm:text-sm">
-              {isIt
-                ? 'Il Bot NON aggiunge carte al mazzo di combattimento durante la fase di costruzione. Aggiungerà invece una carta durante la fase di combattimento se si verifica un Disaccordo.'
-                : 'The Bot does NOT add cards to its combat deck during the building phase. Instead, it adds a card during the combat phase when resolving a Mismatch.'}
-            </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-              <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl">
+              <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl space-y-1">
                 <span className="text-xs font-black text-emerald-400 uppercase tracking-wider block">
-                  🟢 {isIt ? 'Facile' : 'Easy'}
+                  🟢 {isIt ? 'Apprendista' : 'Apprentice'}
                 </span>
-                <p className="text-[11px] text-emerald-200 mt-1">
-                  {isIt
-                    ? 'Pesca 1 carta coperta dal mazzo di costruzione. Se arriva a fine mazzo senza averla usata, ne gira una seconda per avere 2 opzioni.'
-                    : 'Draw 1 face-down card. If reaching end of deck without adding, reveal a 2nd card for 2 choices.'}
+                <p className="text-[11px] text-emerald-200">
+                  {isIt ? 'Threat Deck iniziale: Carte 2–6' : 'Initial Threat Deck: Cards 2–6'}
+                </p>
+                <p className="text-[11px] font-bold text-white">
+                  {isIt ? 'HP Ondata 1: 10 HP' : 'Wave 1 HP: 10 HP'}
                 </p>
               </div>
 
-              <div className="p-3 bg-amber-950/40 border border-amber-500/30 rounded-xl">
+              <div className="p-3 bg-amber-950/40 border border-amber-500/30 rounded-xl space-y-1">
                 <span className="text-xs font-black text-amber-400 uppercase tracking-wider block">
-                  🟡 {isIt ? 'Normale' : 'Normal'}
+                  🟡 {isIt ? 'Veterano' : 'Veteran'}
                 </span>
-                <p className="text-[11px] text-amber-200 mt-1">
-                  {isIt
-                    ? 'Pesca 2 carte coperte dal mazzo di costruzione e posizionale vicino al mazzo di combattimento.'
-                    : 'Draw 2 face-down cards from construction deck and place them near the combat deck.'}
+                <p className="text-[11px] text-amber-200">
+                  {isIt ? 'Threat Deck iniziale: Carte 2–10' : 'Initial Threat Deck: Cards 2–10'}
+                </p>
+                <p className="text-[11px] font-bold text-white">
+                  {isIt ? 'HP Ondata 1: 14 HP' : 'Wave 1 HP: 14 HP'}
                 </p>
               </div>
 
-              <div className="p-3 bg-rose-950/40 border border-rose-500/30 rounded-xl">
+              <div className="p-3 bg-rose-950/40 border border-rose-500/30 rounded-xl space-y-1">
                 <span className="text-xs font-black text-rose-400 uppercase tracking-wider block">
-                  🔴 {isIt ? 'Difficile' : 'Hard'}
+                  🔴 {isIt ? 'Leggenda' : 'Legend'}
                 </span>
-                <p className="text-[11px] text-rose-200 mt-1">
-                  {isIt
-                    ? 'Pesca 3 carte coperte dal mazzo di costruzione, dando al Bot maggiore versatilità nei disaccordi.'
-                    : 'Draw 3 face-down cards from construction deck, granting maximum resolution choices.'}
+                <p className="text-[11px] text-rose-200">
+                  {isIt ? 'Threat Deck iniziale: Mazzo intero con figure e assi' : 'Initial Threat Deck: Full deck with face cards & aces'}
+                </p>
+                <p className="text-[11px] font-bold text-white">
+                  {isIt ? 'HP Ondata 1: 18 HP' : 'Wave 1 HP: 18 HP'}
                 </p>
               </div>
             </div>
           </section>
 
-          {/* Section 3: Fase di Combattimento e Disaccordi */}
+          {/* Effetti Carte Threat Deck */}
           <section className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
             <h4 className="text-base font-extrabold text-amber-400 flex items-center gap-2">
               <ShieldAlert className="w-5 h-5" />
-              {isIt ? '3. Fase di Combattimento & Disaccordi (Mismatch)' : '3. Combat Phase & Mismatches'}
+              {isIt ? '4. Effetti Carte del Threat Deck' : '4. Threat Deck Card Effects'}
             </h4>
-            
-            <p className="text-xs sm:text-sm">
-              {isIt
-                ? 'Gira le carte dei mazzi di combattimento normalmente. Se la carta del Bot è in "Disaccordo" con quella del giocatore, il Bot tenta di risolverlo usando le carte del mazzo di costruzione preparate.'
-                : 'Flip cards from combat decks normally. If the Bot card is in a "Mismatch" with yours, the Bot attempts to resolve it using its prepared construction cards.'}
-            </p>
 
-            {/* Mismatch Solutions Table */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden text-xs">
-              <div className="bg-slate-950 p-2.5 font-bold text-amber-400 border-b border-slate-800">
-                {isIt ? 'Tipi di Disaccordo e Carte Soluzione' : 'Mismatch Types & Solutions'}
-              </div>
               <div className="divide-y divide-slate-800">
-                <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <span className="font-bold text-rose-300">
-                    {isIt ? '1. Bot subisce 3+ danni in più del giocatore' : '1. Bot takes 3+ more damage than player'}
+                <div className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="font-bold text-amber-300 shrink-0 sm:w-32">
+                    🃏 2 – 10
                   </span>
                   <span className="text-slate-300">
-                    ➔ <strong>{isIt ? 'Soluzione:' : 'Solution:'}</strong> {isIt ? 'Una carta Blocco (Non usa cure o attacchi per risolverlo).' : 'A Block card (Won\'t use heal or attack).'}
+                    {isIt
+                      ? 'Attacco diretto pari al valore della carta (2-10 HP): seleziona quale eroe del tuo team subirà i danni. (Nota: Wild Bunch subisce e si cura massimo 1 HP alla volta).'
+                      : 'Direct attack equal to card rank value (2-10 HP): select which hero on your team takes damage. (Note: Wild Bunch takes and heals max 1 HP at a time).'}
                   </span>
                 </div>
 
-                <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <span className="font-bold text-red-400">
-                    {isIt ? '2. Bot viene sconfitto (K.O.) dall\'attacco' : '2. Bot is knocked out (K.O.) by attack'}
+                <div className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="font-bold text-sky-400 shrink-0 sm:w-32">
+                    👑 J / Q / K (Figure)
                   </span>
                   <span className="text-slate-300">
-                    ➔ <strong>{isIt ? 'Soluzione:' : 'Solution:'}</strong> {isIt ? 'Qualsiasi carta che lo salvi (cambio personaggio, blocco, cura, ecc.).' : 'Anything that saves it (character swap, block, heal, etc.).'}
+                    {isIt
+                      ? '🛡️ Il Threat si difende meglio: la prossima carta d\'attacco che giochi contro l\'Ondata infligge 1 danno in meno (minimo 0).'
+                      : '🛡️ Threat defends better: your next attack card played against the Wave deals 1 less damage (minimum 0).'}
                   </span>
                 </div>
 
-                <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <span className="font-bold text-amber-300">
-                    {isIt ? '3. Carta del Bot viene "sprecata"' : '3. Bot\'s card is "wasted"'}
-                    <span className="block text-[10px] text-slate-400 font-normal">
-                      {isIt ? '(es. blocco senza attacco, attacco bloccato, annullo inutile)' : '(e.g. block vs no attack, attack blocked, useless cancel)'}
-                    </span>
+                <div className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="font-bold text-rose-400 shrink-0 sm:w-32">
+                    🅰️ Asso (Ace)
                   </span>
                   <span className="text-slate-300">
-                    ➔ <strong>{isIt ? 'Soluzione:' : 'Solution:'}</strong> {isIt ? 'Qualsiasi carta con effetto positivo (danni, cura, potenziamento).' : 'Any card with positive effect (damage, heal, buff).'}
+                    {isIt
+                      ? '💥 Colpo Speciale: La prossima carta pescata dal Threat Deck infligge danno doppio. Puoi spendere 1 Momentum per annullare subito il raddoppio!'
+                      : '💥 Special Move: Double damage on next threat card drawn. You can spend 1 Momentum to cancel this double damage immediately!'}
                   </span>
                 </div>
               </div>
             </div>
-
-            <ul className="list-disc list-inside space-y-1.5 text-xs text-slate-300 pt-2">
-              <li>
-                {isIt
-                  ? 'Se la carta preparata risolve il disaccordo, la carta originale torna in cima al mazzo del Bot e viene giocata la carta risolutiva.'
-                  : 'If a prepared card resolves the mismatch, the original card goes back on top of the Bot deck and the resolving card is played.'}
-              </li>
-              <li>
-                {isIt
-                  ? 'Le carte di costruzione non usate vanno in fondo al mazzo di costruzione del Bot.'
-                  : 'Unused construction cards go to the bottom of the Bot\'s construction deck.'}
-              </li>
-              <li>
-                {isIt
-                  ? 'Se nessuna carta risolve il disaccordo, restano scoperte e si risolve la carta originaria. Il Bot le conserva per il prossimo disaccordo.'
-                  : 'If no card resolves it, keep them face up and resolve original card. Bot keeps them for next mismatch.'}
-              </li>
-              <li className="text-amber-400 font-semibold">
-                ⚠️ {isIt ? 'Il Bot può aggiungere al massimo 1 CARTA per fase di combattimento!' : 'Bot can only add MAX 1 CARD per combat phase!'}
-              </li>
-            </ul>
           </section>
 
-          {/* Section 4: Priorità per la Carta Aggiunta */}
+          {/* Tabella 5 Ondate & Recupero */}
+          <section className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
+            <h4 className="text-base font-extrabold text-amber-400 flex items-center gap-2">
+              <Flame className="w-5 h-5" />
+              {isIt ? '5. Le 5 Ondate & Scalata' : '5. The 5 Waves & Escalation'}
+            </h4>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border border-slate-800 rounded-xl overflow-hidden">
+                <thead className="bg-slate-950 text-amber-400 font-extrabold border-b border-slate-800">
+                  <tr>
+                    <th className="p-2.5">{isIt ? 'Ondata' : 'Wave'}</th>
+                    <th className="p-2.5">{isIt ? 'HP dell\'Ondata' : 'Wave HP'}</th>
+                    <th className="p-2.5">{isIt ? 'Recupero a Fine Ondata' : 'Post-Wave Recovery'}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800 bg-slate-900/60">
+                  <tr>
+                    <td className="p-2.5 font-bold text-white">Ondata 1</td>
+                    <td className="p-2.5 text-slate-300">10 / 14 / 18 HP (per difficoltà)</td>
+                    <td className="p-2.5 text-emerald-400 font-bold">+3 HP a testa, +1 Potere a testa</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold text-white">Ondata 2</td>
+                    <td className="p-2.5 text-slate-300">+4 HP (14 / 18 / 22 HP)</td>
+                    <td className="p-2.5 text-emerald-400 font-bold">+3 HP a testa, +1 Potere a testa</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold text-white">Ondata 3</td>
+                    <td className="p-2.5 text-slate-300">+4 HP (18 / 22 / 26 HP)</td>
+                    <td className="p-2.5 text-emerald-400 font-bold">+2 HP a testa, +1 Potere a testa</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold text-white">Ondata 4</td>
+                    <td className="p-2.5 text-slate-300">+4 HP (22 / 26 / 30 HP)</td>
+                    <td className="p-2.5 text-amber-400 font-bold">+2 HP a testa, +0 Potere</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold text-white">Ondata 5</td>
+                    <td className="p-2.5 text-slate-300">+4 HP (26 / 30 / 34 HP)</td>
+                    <td className="p-2.5 text-rose-400 font-bold">— (Nessun recupero prima dell'ultima)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-xs text-slate-400 italic">
+              ⚡ <strong>{isIt ? 'Scalata:' : 'Escalation:'}</strong>{' '}
+              {isIt
+                ? 'Ogni volta che superi un\'Ondata, aggiungi 2 carte di rango superiore al Threat Deck e rimescola tutto.'
+                : 'Every time you complete a Wave, add 2 higher-rank cards to the Threat Deck and reshuffle.'}
+            </p>
+          </section>
+
+          {/* Momentum */}
           <section className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
             <h4 className="text-base font-extrabold text-amber-400 flex items-center gap-2">
               <Zap className="w-5 h-5" />
-              {isIt ? '4. Priorità per la Scelta della Carta del Bot' : '4. Priority Order for Bot Card Choice'}
+              {isIt ? '6. Momentum (Riserva Strategica)' : '6. Momentum (Strategic Reserve)'}
             </h4>
-            <p className="text-xs text-slate-400">
-              {isIt
-                ? 'Quando entrambe le carte del Bot potrebbero risolvere il disaccordo (o alla fine del mazzo), usa questa scala di priorità (dalla più alta alla più bassa):'
-                : 'When multiple cards resolve a mismatch (or at deck end), use this priority order (highest to lowest):'}
-            </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1.5">
+                <span className="font-bold text-emerald-400 block">{isIt ? 'Guadagni 1 Momentum quando:' : 'Gain 1 Momentum when:'}</span>
+                <ul className="list-disc list-inside space-y-1 text-slate-300">
+                  <li>{isIt ? 'Porti a 0 gli HP di un\'Ondata (superi l\'ondata)' : 'You reduce Wave HP to 0 (clear wave)'}</li>
+                  <li>{isIt ? 'Il Threat Deck si esaurisce e va rimescolato' : 'Threat Deck runs out and is reshuffled'}</li>
+                </ul>
+              </div>
 
-            <ol className="space-y-2 text-xs">
-              <li className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl flex items-start gap-2">
-                <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black rounded-lg text-xs">1</span>
-                <div>
-                  <strong>{isIt ? 'Contrattacco Diretto:' : 'Direct Counter:'}</strong> {isIt ? 'Un blocco all\'attacco del giocatore, o un annullamento per una carta avversaria con effetto forte.' : 'A block against player attack, or cancel for a strong player card.'}
-                </div>
-              </li>
+              <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1.5">
+                <span className="font-bold text-amber-400 block">{isIt ? 'Spendi 1 Momentum per:' : 'Spend 1 Momentum to:'}</span>
+                <ul className="list-disc list-inside space-y-1 text-slate-300">
+                  <li><strong>1 Momentum ➔</strong> {isIt ? 'Curare 2 HP a un lottatore a scelta' : 'Heal 2 HP to any fighter'}</li>
+                  <li><strong>1 Momentum ➔</strong> {isIt ? 'Pescare 1 carta extra in fase Build (1 tra 4 anziché 3)' : 'Draw 1 extra card in Build phase'}</li>
+                  <li><strong>1 Momentum ➔</strong> {isIt ? 'Annullare il raddoppio di danno di un Asso appena pescato' : 'Cancel an Ace\'s double damage multiplier'}</li>
+                </ul>
+              </div>
+            </div>
+          </section>
 
-              <li className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl flex items-start gap-2">
-                <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black rounded-lg text-xs">2</span>
-                <div>
-                  <strong>{isIt ? 'Attacco Pesante (3+ Danni):' : 'Heavy Attack (3+ Damage):'}</strong> {isIt ? 'Un attacco che infligge 3 o più danni, dando priorità all\'opzione più forte.' : 'An attack dealing 3+ damage, prioritizing strongest attack.'}
-                </div>
-              </li>
-
-              <li className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl flex items-start gap-2">
-                <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black rounded-lg text-xs">3</span>
-                <div>
-                  <strong>{isIt ? 'Cura Efficiente (2+ HP / Potere):' : 'Efficient Heal (2+ HP / Power):'}</strong> {isIt ? 'Cura 2+ danni e/o fornisce un potenziamento (recupero potere), dando priorità al guadagno maggiore.' : 'Heals 2+ HP and/or gives power boost, prioritizing larger gain.'}
-                </div>
-              </li>
-
-              <li className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl flex items-start gap-2">
-                <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black rounded-lg text-xs">4</span>
-                <div>
-                  <strong>{isIt ? 'Potenziamento / Avanzamento:' : 'Direct Buff / Advancement:'}</strong> {isIt ? 'Aumento di rabbia, guadagno di potere, ecc.' : 'Rage increase, power boost, etc.'}
-                </div>
-              </li>
-
-              <li className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl flex items-start gap-2">
-                <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black rounded-lg text-xs">5</span>
-                <div>
-                  <strong>{isIt ? 'Effetto Minore:' : 'Minor Effect:'}</strong> {isIt ? 'Attacco con meno di 3 danni, o cura quando il lottatore non è ferito.' : 'Attack dealing < 3 damage, or healing when not hurt.'}
-                </div>
-              </li>
-
-              <li className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl flex items-start gap-2">
-                <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black rounded-lg text-xs">6</span>
-                <div>
-                  <strong>{isIt ? 'Blocco Passivo:' : 'Passive Block:'}</strong> {isIt ? 'Un blocco quando il giocatore non sta attaccando.' : 'A block card when player is not attacking.'}
-                </div>
-              </li>
-
-              <li className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl flex items-start gap-2">
-                <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black rounded-lg text-xs">7</span>
-                <div>
-                  <strong>{isIt ? 'Carta Contrastata:' : 'Countered Card:'}</strong> {isIt ? 'Una carta che il giocatore contrasterà immediatamente.' : 'A card that player will immediately counter.'}
-                </div>
-              </li>
-            </ol>
-
-            <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-xs space-y-1">
-              <span className="font-bold text-amber-400 block">{isIt ? 'Criteri di Parità (Tie-Breakers):' : 'Tie-Breakers:'}</span>
+          {/* Esito Run */}
+          <section className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-2">
+            <h4 className="text-base font-extrabold text-amber-400 flex items-center gap-2">
+              <Award className="w-5 h-5" />
+              {isIt ? '7. Esito della Run' : '7. Run Outcome'}
+            </h4>
+            <div className="space-y-1.5 text-xs text-slate-300">
               <p>
-                1. {isIt ? 'Scegli la carta del lottatore del Bot con **più vita (HP) rimanente**.' : 'Pick card belonging to Bot fighter with **highest remaining HP**.'}
+                💀 <strong>{isIt ? 'Sconfitta:' : 'Defeat:'}</strong> {isIt ? 'Se uno o entrambi i tuoi lottatori vanno KO, la corsa finisce. Il punteggio finale è il numero di Ondate superate.' : 'If one or both fighters go KO, the run ends. Score is the number of waves completed.'}
               </p>
               <p>
-                2. {isIt ? 'Se c\'è ancora parità, scegli **casualmente**.' : 'If still tied, choose **randomly**.'}
+                🏆 <strong>{isIt ? 'Vittoria:' : 'Victory:'}</strong> {isIt ? 'Supera tutte e 5 le Ondate per conquistare il Circuito Clandestino!' : 'Clear all 5 Waves to conquer the Underground Circuit!'}
               </p>
             </div>
           </section>

@@ -17,7 +17,7 @@ import { PlayerTeam, MatchHeroState, Match, Language, AiDifficulty, GameMode } f
 import { HEROES, getHeroById } from '../data/heroes';
 import { getTranslation } from '../data/translations';
 import { FighterAvatar } from './FighterAvatar';
-import { BotAiAssistantCard } from './BotAiAssistantCard';
+import { CircuitClandestinoCard } from './CircuitClandestinoCard';
 
 interface ActiveMatchProps {
   team1: PlayerTeam;
@@ -84,20 +84,30 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
       }
     });
 
-    // Check team 2
-    team2.heroes.forEach((h, idx) => {
-      if (h.heroId === 'fey_folk' && !h.activeFeyMember && !h.isKo) {
-        setFeyModalState({ isOpen: true, teamNumber: 2, heroIndex: idx });
-        return;
-      }
-    });
-  }, [team1, team2, feyModalState]);
+    // Check team 2 if not vs AI
+    if (!isVsAi && team2.playerId !== 'threat_deck') {
+      team2.heroes.forEach((h, idx) => {
+        if (h.heroId === 'fey_folk' && !h.activeFeyMember && !h.isKo) {
+          setFeyModalState({ isOpen: true, teamNumber: 2, heroIndex: idx });
+          return;
+        }
+      });
+    }
+  }, [team1, team2, feyModalState, isVsAi]);
 
   // Check if both heroes in a team are KO
-  const isTeam1AllKo = team1.heroes.every((h) => h.isKo);
-  const isTeam2AllKo = team2.heroes.every((h) => h.isKo);
+  const isTeam1AllKo = team1.heroes.length > 0 && team1.heroes.every((h) => h.isKo);
+  const isTeam2AllKo = team2.heroes.length > 0 && team2.heroes.every((h) => h.isKo);
 
   useEffect(() => {
+    if (isVsAi || team2.playerId === 'threat_deck') {
+      if (isTeam1AllKo) {
+        // Player defeated in Circuito Clandestino
+        triggerWinnerModal(null, false);
+      }
+      return;
+    }
+
     if (isTeam1AllKo && isTeam2AllKo) {
       triggerWinnerModal(null, true);
     } else if (isTeam1AllKo) {
@@ -105,7 +115,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
     } else if (isTeam2AllKo) {
       triggerWinnerModal(team1.playerId, false);
     }
-  }, [isTeam1AllKo, isTeam2AllKo]);
+  }, [isTeam1AllKo, isTeam2AllKo, isVsAi, team2.playerId]);
 
   const triggerWinnerModal = (winnerPlayerId: string | null, isDraw: boolean) => {
     setWinnerModal({ isOpen: true, winnerPlayerId, isDraw });
@@ -580,29 +590,33 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
           </div>
         </div>
 
-        {/* BOT AI SOLO ASSISTANT PANEL */}
-        {(isVsAi || team2.playerId === 'bot_ai') && (
-            <BotAiAssistantCard
+        {/* CIRCUITO CLANDESTINO SOLO ASSISTANT PANEL */}
+        {(isVsAi || team2.playerId === 'threat_deck' || team2.playerId === 'bot_ai') && (
+            <CircuitClandestinoCard
                 aiDifficulty={activeAiDifficulty}
                 language={language}
+                team1={team1}
+                onUpdateHeroHp={(idx, delta) => changeHp(1, idx, delta)}
+                onUpdateHeroPower={(idx, delta) => changePower(1, idx, delta)}
+                onTriggerVictory={() => triggerWinnerModal(team1.playerId, false)}
             />
         )}
 
         {/* MATCH BATTLEFIELD GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
-          {/* TEAM 1 SIDE (BLUE) */}
+        {isVsAi || team2.playerId === 'threat_deck' ? (
+          /* SOLO MODE: ONLY RENDER PLAYER TAG TEAM (TEAM 1) */
           <div className="bg-slate-900 border border-blue-900/50 rounded-2xl p-3.5 sm:p-4 shadow-lg space-y-2.5">
             <div className="flex items-center justify-between border-b border-blue-900/40 pb-2">
               <div>
-              <span className="text-[10px] uppercase font-bold text-blue-400 tracking-wider">
-                Team 1
-              </span>
+                <span className="text-[10px] uppercase font-bold text-blue-400 tracking-wider">
+                  {language === 'it' ? 'Il Tuo Tag Team' : 'Your Tag Team'}
+                </span>
                 <h3 className="text-base sm:text-lg font-black text-white">{team1.playerName}</h3>
               </div>
               {isTeam1AllKo && (
-                  <span className="px-2.5 py-0.5 bg-red-950 text-red-400 border border-red-800 text-[11px] font-bold rounded-lg">
-                {t.activeMatch.allKo}
-              </span>
+                <span className="px-2.5 py-0.5 bg-red-950 text-red-400 border border-red-800 text-[11px] font-bold rounded-lg">
+                  {t.activeMatch.allKo}
+                </span>
               )}
             </div>
 
@@ -610,28 +624,52 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
               {team1.heroes.map((hero, idx) => renderFighterCard(1, idx, hero))}
             </div>
           </div>
-
-          {/* TEAM 2 SIDE (RED) */}
-          <div className="bg-slate-900 border border-rose-900/50 rounded-2xl p-3.5 sm:p-4 shadow-lg space-y-2.5">
-            <div className="flex items-center justify-between border-b border-rose-900/40 pb-2">
-              <div>
-              <span className="text-[10px] uppercase font-bold text-rose-400 tracking-wider">
-                Team 2
-              </span>
-                <h3 className="text-base sm:text-lg font-black text-white">{team2.playerName}</h3>
-              </div>
-              {isTeam2AllKo && (
+        ) : (
+          /* MULTIPLAYER / 2-TEAM GRID */
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+            {/* TEAM 1 SIDE (BLUE) */}
+            <div className="bg-slate-900 border border-blue-900/50 rounded-2xl p-3.5 sm:p-4 shadow-lg space-y-2.5">
+              <div className="flex items-center justify-between border-b border-blue-900/40 pb-2">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-blue-400 tracking-wider">
+                    Team 1
+                  </span>
+                  <h3 className="text-base sm:text-lg font-black text-white">{team1.playerName}</h3>
+                </div>
+                {isTeam1AllKo && (
                   <span className="px-2.5 py-0.5 bg-red-950 text-red-400 border border-red-800 text-[11px] font-bold rounded-lg">
-                {t.activeMatch.allKo}
-              </span>
-              )}
+                    {t.activeMatch.allKo}
+                  </span>
+                )}
+              </div>
+
+              <div className={`grid ${team1.heroes.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2 sm:gap-2.5`}>
+                {team1.heroes.map((hero, idx) => renderFighterCard(1, idx, hero))}
+              </div>
             </div>
 
-            <div className={`grid ${team2.heroes.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2 sm:gap-2.5`}>
-              {team2.heroes.map((hero, idx) => renderFighterCard(2, idx, hero))}
+            {/* TEAM 2 SIDE (RED) */}
+            <div className="bg-slate-900 border border-rose-900/50 rounded-2xl p-3.5 sm:p-4 shadow-lg space-y-2.5">
+              <div className="flex items-center justify-between border-b border-rose-900/40 pb-2">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-rose-400 tracking-wider">
+                    Team 2
+                  </span>
+                  <h3 className="text-base sm:text-lg font-black text-white">{team2.playerName}</h3>
+                </div>
+                {isTeam2AllKo && (
+                  <span className="px-2.5 py-0.5 bg-red-950 text-red-400 border border-red-800 text-[11px] font-bold rounded-lg">
+                    {t.activeMatch.allKo}
+                  </span>
+                )}
+              </div>
+
+              <div className={`grid ${team2.heroes.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2 sm:gap-2.5`}>
+                {team2.heroes.map((hero, idx) => renderFighterCard(2, idx, hero))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* FEY FOLK MEMBER SELECTION POPUP MODAL */}
         {feyModalState?.isOpen && (
@@ -794,9 +832,19 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
 
                 <div className="space-y-2">
                   <h3 className="text-2xl font-black text-white">
-                    {t.activeMatch.winnerModalTitle}
+                    {isVsAi || team2.playerId === 'threat_deck'
+                      ? winnerModal.winnerPlayerId === team1.playerId
+                        ? (language === 'it' ? '🏆 CIRCUITO CONQUISTATO!' : '🏆 CIRCUIT CONQUERED!')
+                        : (language === 'it' ? '💀 SCONFITTA NEL CIRCUITO' : '💀 DEFEAT IN THE CIRCUIT')
+                      : t.activeMatch.winnerModalTitle}
                   </h3>
-                  {winnerModal.isDraw ? (
+                  {isVsAi || team2.playerId === 'threat_deck' ? (
+                    <p className="text-slate-300 text-sm">
+                      {winnerModal.winnerPlayerId === team1.playerId
+                        ? (language === 'it' ? 'Congratulazioni! Hai superato tutte le 5 Ondate del Threat Deck!' : 'Congratulations! You cleared all 5 Waves of the Threat Deck!')
+                        : (language === 'it' ? 'Entrambi i lottatori del tuo Tag Team sono andati KO. Corsa terminata.' : 'Both fighters of your Tag Team were knocked out. Run ended.')}
+                    </p>
+                  ) : winnerModal.isDraw ? (
                       <p className="text-amber-400 font-bold text-lg">
                         {t.activeMatch.drawResultLabel}
                       </p>
