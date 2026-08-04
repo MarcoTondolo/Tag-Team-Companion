@@ -632,7 +632,7 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
           )}
         </div>
 
-        {/* GUIDED SOLO DRAFT ASSISTANT (MICHAEL KELLEY RULES) */}
+        {/* GUIDED SOLO DRAFT ASSISTANT */}
         {matchMode === 'vs_ai' && soloDraftMethod === 'guided' && (
             <div className="bg-slate-900 border border-amber-500/30 rounded-3xl p-6 shadow-xl space-y-6 animate-fade-in">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
