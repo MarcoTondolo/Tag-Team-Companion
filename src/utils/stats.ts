@@ -55,8 +55,16 @@ export function computeWinrate(wins: number, matches: number): number {
 }
 
 export function calculateAllStats(players: Player[], matches: Match[], filterPlayerId?: string) {
+  // Helper interface to hold temporary wave calculation properties
+  type WaveStatAcc = {
+    maxWave?: number;
+    avgWave?: number;
+    wavesSum?: number;
+    wavesCount?: number;
+  };
+
   // 1. Calculate Hero Stats for all 12 base heroes
-  const heroStatsMap: Record<string, HeroStats> = {};
+  const heroStatsMap: Record<string, HeroStats & WaveStatAcc> = {};
   HEROES.forEach((hero) => {
     heroStatsMap[hero.id] = {
       heroId: hero.id,
@@ -66,14 +74,18 @@ export function calculateAllStats(players: Player[], matches: Match[], filterPla
       losses: 0,
       draws: 0,
       winRate: 0,
+      maxWave: 0,
+      avgWave: 0,
+      wavesSum: 0,
+      wavesCount: 0,
     };
   });
 
   // 2. Calculate Composition Stats
-  const compStatsMap: Record<string, CompositionStats> = {};
+  const compStatsMap: Record<string, CompositionStats & WaveStatAcc> = {};
 
   // 3. Calculate Player Stats
-  const playerStatsMap: Record<string, PlayerStats> = {};
+  const playerStatsMap: Record<string, PlayerStats & WaveStatAcc> = {};
   players.forEach((p) => {
     playerStatsMap[p.id] = {
       playerId: p.id,
@@ -83,6 +95,10 @@ export function calculateAllStats(players: Player[], matches: Match[], filterPla
       losses: 0,
       draws: 0,
       winRate: 0,
+      maxWave: 0,
+      avgWave: 0,
+      wavesSum: 0,
+      wavesCount: 0,
       byCharacter: {},
       byComposition: {},
     };
@@ -91,6 +107,8 @@ export function calculateAllStats(players: Player[], matches: Match[], filterPla
   // Process each match
   matches.forEach((match) => {
     const isDraw = match.isDraw || match.winnerPlayerId === null;
+    const isSolo = match.isVsAi || match.gameMode === 'vs_ai' || match.team2?.playerId === 'bot_ai' || match.team2?.playerId === 'threat_deck';
+    const waveVal = match.maxWave !== undefined ? match.maxWave : (isSolo ? 1 : undefined);
 
     // Helper to process team side
     const processTeam = (team: Match['team1'], isWinner: boolean) => {
@@ -110,8 +128,18 @@ export function calculateAllStats(players: Player[], matches: Match[], filterPla
       const compId = getCompId(hero1Id, hero2Id);
       const compName = getCompName(hero1Id, hero2Id);
 
+      // Helper to record wave metrics
+      const recordWave = (obj: WaveStatAcc) => {
+        if (waveVal !== undefined && waveVal > 0) {
+          obj.maxWave = Math.max(obj.maxWave || 0, waveVal);
+          obj.wavesSum = (obj.wavesSum || 0) + waveVal;
+          obj.wavesCount = (obj.wavesCount || 0) + 1;
+        }
+      };
+
       // --- Process Global Character Stats ---
       [hero1Id, hero2Id].forEach((hId) => {
+        if (hId === 'threat_deck') return;
         if (!heroStatsMap[hId]) {
           const hObj = getHeroById(hId);
           heroStatsMap[hId] = {
@@ -122,6 +150,10 @@ export function calculateAllStats(players: Player[], matches: Match[], filterPla
             losses: 0,
             draws: 0,
             winRate: 0,
+            maxWave: 0,
+            avgWave: 0,
+            wavesSum: 0,
+            wavesCount: 0,
           };
         }
         const hStat = heroStatsMap[hId];
@@ -133,29 +165,37 @@ export function calculateAllStats(players: Player[], matches: Match[], filterPla
         } else {
           hStat.losses += 1;
         }
+        recordWave(hStat);
       });
 
       // --- Process Global Composition Stats ---
-      if (!compStatsMap[compId]) {
-        compStatsMap[compId] = {
-          compId,
-          heroIds: [hero1Id, hero2Id].sort() as [string, string],
-          compName,
-          matchesPlayed: 0,
-          wins: 0,
-          losses: 0,
-          draws: 0,
-          winRate: 0,
-        };
-      }
-      const cStat = compStatsMap[compId];
-      cStat.matchesPlayed += 1;
-      if (isDraw) {
-        cStat.draws += 1;
-      } else if (isWinner) {
-        cStat.wins += 1;
-      } else {
-        cStat.losses += 1;
+      if (hero1Id !== 'threat_deck' && hero2Id !== 'threat_deck') {
+        if (!compStatsMap[compId]) {
+          compStatsMap[compId] = {
+            compId,
+            heroIds: [hero1Id, hero2Id].sort() as [string, string],
+            compName,
+            matchesPlayed: 0,
+            wins: 0,
+            losses: 0,
+            draws: 0,
+            winRate: 0,
+            maxWave: 0,
+            avgWave: 0,
+            wavesSum: 0,
+            wavesCount: 0,
+          };
+        }
+        const cStat = compStatsMap[compId];
+        cStat.matchesPlayed += 1;
+        if (isDraw) {
+          cStat.draws += 1;
+        } else if (isWinner) {
+          cStat.wins += 1;
+        } else {
+          cStat.losses += 1;
+        }
+        recordWave(cStat);
       }
 
       // --- Process Player Stats ---
@@ -170,9 +210,11 @@ export function calculateAllStats(players: Player[], matches: Match[], filterPla
           } else {
             pStat.losses += 1;
           }
+          recordWave(pStat);
 
           // Player's per-character breakdown
           [hero1Id, hero2Id].forEach((hId) => {
+            if (hId === 'threat_deck') return;
             if (!pStat.byCharacter[hId]) {
               pStat.byCharacter[hId] = {
                 heroId: hId,
@@ -181,32 +223,44 @@ export function calculateAllStats(players: Player[], matches: Match[], filterPla
                 losses: 0,
                 draws: 0,
                 winRate: 0,
+                maxWave: 0,
+                avgWave: 0,
+                wavesSum: 0,
+                wavesCount: 0,
               };
             }
-            const pCharStat = pStat.byCharacter[hId];
+            const pCharStat = pStat.byCharacter[hId] as PlayerStatDetail & WaveStatAcc;
             pCharStat.matchesPlayed += 1;
             if (isDraw) pCharStat.draws += 1;
             else if (isWinner) pCharStat.wins += 1;
             else pCharStat.losses += 1;
+            recordWave(pCharStat);
           });
 
           // Player's per-composition breakdown
-          if (!pStat.byComposition[compId]) {
-            pStat.byComposition[compId] = {
-              compId,
-              heroIds: [hero1Id, hero2Id].sort() as [string, string],
-              matchesPlayed: 0,
-              wins: 0,
-              losses: 0,
-              draws: 0,
-              winRate: 0,
-            };
+          if (hero1Id !== 'threat_deck' && hero2Id !== 'threat_deck') {
+            if (!pStat.byComposition[compId]) {
+              pStat.byComposition[compId] = {
+                compId,
+                heroIds: [hero1Id, hero2Id].sort() as [string, string],
+                matchesPlayed: 0,
+                wins: 0,
+                losses: 0,
+                draws: 0,
+                winRate: 0,
+                maxWave: 0,
+                avgWave: 0,
+                wavesSum: 0,
+                wavesCount: 0,
+              };
+            }
+            const pCompStat = pStat.byComposition[compId] as PlayerStatDetail & WaveStatAcc;
+            pCompStat.matchesPlayed += 1;
+            if (isDraw) pCompStat.draws += 1;
+            else if (isWinner) pCompStat.wins += 1;
+            else pCompStat.losses += 1;
+            recordWave(pCompStat);
           }
-          const pCompStat = pStat.byComposition[compId];
-          pCompStat.matchesPlayed += 1;
-          if (isDraw) pCompStat.draws += 1;
-          else if (isWinner) pCompStat.wins += 1;
-          else pCompStat.losses += 1;
         }
       });
     };
@@ -215,33 +269,37 @@ export function calculateAllStats(players: Player[], matches: Match[], filterPla
     const team2Winner = match.winnerPlayerId === match.team2.playerId;
 
     processTeam(match.team1, team1Winner);
-    processTeam(match.team2, team2Winner);
+    if (!isSolo && match.team2?.playerId !== 'bot_ai' && match.team2?.playerId !== 'threat_deck') {
+      processTeam(match.team2, team2Winner);
+    }
   });
 
-  // Calculate Winrates for all
-  Object.values(heroStatsMap).forEach((stat) => {
+  // Helper to finalize object wave & winrate stats
+  const finalizeStats = (stat: { winRate: number; wins: number; matchesPlayed: number; maxWave?: number; avgWave?: number } & WaveStatAcc) => {
     stat.winRate = computeWinrate(stat.wins, stat.matchesPlayed);
-  });
+    if (stat.wavesCount && stat.wavesCount > 0) {
+      stat.avgWave = Math.round(((stat.wavesSum || 0) / stat.wavesCount) * 10) / 10;
+      stat.maxWave = stat.maxWave || 1;
+    } else {
+      stat.maxWave = 0;
+      stat.avgWave = 0;
+    }
+    delete stat.wavesSum;
+    delete stat.wavesCount;
+  };
 
-  Object.values(compStatsMap).forEach((stat) => {
-    stat.winRate = computeWinrate(stat.wins, stat.matchesPlayed);
-  });
-
+  // Calculate Winrates & Waves for all
+  Object.values(heroStatsMap).forEach(finalizeStats);
+  Object.values(compStatsMap).forEach(finalizeStats);
   Object.values(playerStatsMap).forEach((stat) => {
-    stat.winRate = computeWinrate(stat.wins, stat.matchesPlayed);
-
-    Object.values(stat.byCharacter).forEach((cStat) => {
-      cStat.winRate = computeWinrate(cStat.wins, cStat.matchesPlayed);
-    });
-
-    Object.values(stat.byComposition).forEach((compStat) => {
-      compStat.winRate = computeWinrate(compStat.wins, compStat.matchesPlayed);
-    });
+    finalizeStats(stat);
+    Object.values(stat.byCharacter).forEach((cStat) => finalizeStats(cStat as any));
+    Object.values(stat.byComposition).forEach((compStat) => finalizeStats(compStat as any));
   });
 
   return {
-    heroStats: Object.values(heroStatsMap).sort((a, b) => b.matchesPlayed - a.matchesPlayed || b.winRate - a.winRate),
-    compStats: Object.values(compStatsMap).sort((a, b) => b.matchesPlayed - a.matchesPlayed || b.winRate - a.winRate),
-    playerStats: Object.values(playerStatsMap).sort((a, b) => b.matchesPlayed - a.matchesPlayed || b.winRate - a.winRate),
+    heroStats: Object.values(heroStatsMap).sort((a, b) => (b.avgWave || 0) - (a.avgWave || 0) || b.matchesPlayed - a.matchesPlayed || b.winRate - a.winRate),
+    compStats: Object.values(compStatsMap).sort((a, b) => (b.avgWave || 0) - (a.avgWave || 0) || b.matchesPlayed - a.matchesPlayed || b.winRate - a.winRate),
+    playerStats: Object.values(playerStatsMap).sort((a, b) => (b.avgWave || 0) - (a.avgWave || 0) || b.matchesPlayed - a.matchesPlayed || b.winRate - a.winRate),
   };
 }

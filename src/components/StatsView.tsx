@@ -38,6 +38,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
 
   // Top Game Mode Selector: '1v1' | '2v2' | 'vs_ai'
   const [gameMode, setGameMode] = useState<GameMode>('1v1');
+  const isSoloMode = gameMode === 'vs_ai';
 
   // 3 sub-tabs: 'players' | 'characters' | 'compositions'
   const [activeTab, setActiveTab] = useState<'players' | 'characters' | 'compositions'>('players');
@@ -47,7 +48,19 @@ export const StatsView: React.FC<StatsViewProps> = ({
   const [selectedPlayerFilter, setSelectedPlayerFilter] = useState<string>(
       initialPlayerFilterId || 'all'
   );
-  const [sortBy, setSortBy] = useState<'winrate' | 'matches' | 'wins'>('matches');
+  const [sortBy, setSortBy] = useState<'winrate' | 'matches' | 'wins' | 'avgWave' | 'maxWave'>('matches');
+
+  // Switch mode handler
+  const handleGameModeChange = (mode: GameMode) => {
+    setGameMode(mode);
+    if (mode === 'vs_ai') {
+      setSortBy('avgWave');
+    } else {
+      if (sortBy === 'avgWave' || sortBy === 'maxWave') {
+        setSortBy('matches');
+      }
+    }
+  };
 
   // Expanded player detail card ID
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(
@@ -57,13 +70,13 @@ export const StatsView: React.FC<StatsViewProps> = ({
   // Filter matches by selected gameMode
   const modeMatches = matches.filter((m) => {
     if (gameMode === 'vs_ai') {
-      return m.isVsAi || m.gameMode === 'vs_ai' || m.team2?.playerId === 'bot_ai';
+      return m.isVsAi || m.gameMode === 'vs_ai' || m.team2?.playerId === 'bot_ai' || m.team2?.playerId === 'threat_deck';
     }
     if (gameMode === '2v2') {
       return m.gameMode === '2v2';
     }
     // Default 1v1
-    return !m.isVsAi && m.team2?.playerId !== 'bot_ai' && (m.gameMode === '1v1' || !m.gameMode);
+    return !m.isVsAi && m.team2?.playerId !== 'bot_ai' && m.team2?.playerId !== 'threat_deck' && (m.gameMode === '1v1' || !m.gameMode);
   });
 
   // Overall Global stats for selected mode
@@ -72,29 +85,51 @@ export const StatsView: React.FC<StatsViewProps> = ({
   // Filtered stats by player for selected mode
   const filteredStats = calculateAllStats(players, modeMatches, selectedPlayerFilter);
 
-  // Derive Top KPI Champions
+  // Derive Top KPI Champions (In Solo mode, ranked by highest avgWave, tie breaker maxWave)
   const topPlayer = overallStats.playerStats.length > 0
-      ? [...overallStats.playerStats].sort((a, b) => b.wins - a.wins || b.winRate - a.winRate)[0]
+      ? [...overallStats.playerStats]
+          .filter(p => p.matchesPlayed > 0)
+          .sort((a, b) => isSoloMode
+              ? (b.avgWave || 0) - (a.avgWave || 0) || (b.maxWave || 0) - (a.maxWave || 0) || b.matchesPlayed - a.matchesPlayed
+              : b.wins - a.wins || b.winRate - a.winRate
+          )[0]
       : null;
 
   const topHero = overallStats.heroStats
       .filter(h => h.matchesPlayed > 0)
-      .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate)[0] ?? null;
+      .sort((a, b) => isSoloMode
+          ? (b.avgWave || 0) - (a.avgWave || 0) || (b.maxWave || 0) - (a.maxWave || 0) || b.matchesPlayed - a.matchesPlayed
+          : b.wins - a.wins || b.winRate - a.winRate
+      )[0] ?? null;
 
   const topComp = overallStats.compStats
       .filter(c => c.matchesPlayed > 0)
-      .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate)[0] ?? null;
+      .sort((a, b) => isSoloMode
+          ? (b.avgWave || 0) - (a.avgWave || 0) || (b.maxWave || 0) - (a.maxWave || 0) || b.matchesPlayed - a.matchesPlayed
+          : b.wins - a.wins || b.winRate - a.winRate
+      )[0] ?? null;
 
   // Sorting function
-  const sortStatsList = <T extends { winRate: number; matchesPlayed: number; wins: number }>(list: T[]): T[] => {
+  const sortStatsList = <T extends { winRate: number; matchesPlayed: number; wins: number; maxWave?: number; avgWave?: number }>(list: T[]): T[] => {
     return [...list].sort((a, b) => {
-      if (sortBy === 'winrate') {
-        return b.winRate - a.winRate || b.matchesPlayed - a.matchesPlayed;
+      if (isSoloMode) {
+        if (sortBy === 'maxWave') {
+          return (b.maxWave || 0) - (a.maxWave || 0) || (b.avgWave || 0) - (a.avgWave || 0) || b.matchesPlayed - a.matchesPlayed;
+        }
+        if (sortBy === 'matches') {
+          return b.matchesPlayed - a.matchesPlayed || (b.avgWave || 0) - (a.avgWave || 0);
+        }
+        // Default 'avgWave'
+        return (b.avgWave || 0) - (a.avgWave || 0) || (b.maxWave || 0) - (a.maxWave || 0) || b.matchesPlayed - a.matchesPlayed;
+      } else {
+        if (sortBy === 'winrate') {
+          return b.winRate - a.winRate || b.matchesPlayed - a.matchesPlayed;
+        }
+        if (sortBy === 'wins') {
+          return b.wins - a.wins || b.winRate - a.winRate;
+        }
+        return b.matchesPlayed - a.matchesPlayed || b.winRate - a.winRate;
       }
-      if (sortBy === 'wins') {
-        return b.wins - a.wins || b.winRate - a.winRate;
-      }
-      return b.matchesPlayed - a.matchesPlayed || b.winRate - a.winRate;
     });
   };
 
@@ -119,7 +154,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
             {/* Top Game Mode Selector: 1v1 | 2v2 | vs AI */}
             <div className="grid grid-cols-3 bg-slate-950 p-1 rounded-2xl border border-slate-800 gap-1 text-xs">
               <button
-                  onClick={() => setGameMode('1v1')}
+                  onClick={() => handleGameModeChange('1v1')}
                   className={`px-3 py-1.5 rounded-xl font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       gameMode === '1v1'
                           ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
@@ -131,7 +166,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               </button>
 
               <button
-                  onClick={() => setGameMode('2v2')}
+                  onClick={() => handleGameModeChange('2v2')}
                   className={`px-3 py-1.5 rounded-xl font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       gameMode === '2v2'
                           ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
@@ -143,7 +178,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               </button>
 
               <button
-                  onClick={() => setGameMode('vs_ai')}
+                  onClick={() => handleGameModeChange('vs_ai')}
                   className={`px-3 py-1.5 rounded-xl font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       gameMode === 'vs_ai'
                           ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
@@ -225,7 +260,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 {topPlayer.playerName}
               </span>
                   <span className="text-[10px] sm:text-xs font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
-                {topPlayer.winRate}%
+                {isSoloMode ? `${language === 'it' ? 'Media' : 'Avg'}: ${topPlayer.avgWave || 1}` : `${topPlayer.winRate}%`}
               </span>
                 </div>
             ) : (
@@ -250,7 +285,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 </span>
                   </div>
                   <span className="text-[10px] sm:text-xs font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
-                {topHero.winRate}%
+                {isSoloMode ? `${language === 'it' ? 'Media' : 'Avg'}: ${topHero.avgWave || 1}` : `${topHero.winRate}%`}
               </span>
                 </div>
             ) : (
@@ -278,7 +313,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 </span>
                   </div>
                   <span className="text-[10px] sm:text-xs font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
-                {topComp.winRate}%
+                {isSoloMode ? `${language === 'it' ? 'Media' : 'Avg'}: ${topComp.avgWave || 1}` : `${topComp.winRate}%`}
               </span>
                 </div>
             ) : (
@@ -334,9 +369,19 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   onChange={(e) => setSortBy(e.target.value as any)}
                   className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-amber-500 cursor-pointer"
               >
-                <option value="matches">{t.statsView.sortMatches}</option>
-                <option value="winrate">{t.statsView.sortWinrate}</option>
-                <option value="wins">{t.statsView.sortWins}</option>
+                {isSoloMode ? (
+                    <>
+                      <option value="avgWave">{language === 'it' ? 'Ondata Media' : 'Avg Wave'}</option>
+                      <option value="maxWave">{language === 'it' ? 'Ondata Max' : 'Max Wave'}</option>
+                      <option value="matches">{language === 'it' ? 'Partite' : 'Matches'}</option>
+                    </>
+                ) : (
+                    <>
+                      <option value="matches">{t.statsView.sortMatches}</option>
+                      <option value="winrate">{t.statsView.sortWinrate}</option>
+                      <option value="wins">{t.statsView.sortWins}</option>
+                    </>
+                )}
               </select>
             </div>
           </div>
@@ -383,51 +428,82 @@ export const StatsView: React.FC<StatsViewProps> = ({
                               </div>
                             </div>
 
-                            {/* Stats pills & Winrate Progress Bar */}
+                            {/* Stats pills & Winrate/Wave Progress Bar */}
                             <div className="flex items-center gap-3">
                               <div className="flex flex-col items-end gap-1">
-                                <div className="grid grid-cols-4 gap-3 bg-slate-950 px-4 py-2.5 rounded-xl border border-slate-800 text-center text-xs">
-                                  <div>
-                            <span className="text-[10px] uppercase text-slate-500 block font-semibold">
-                              {t.common.wins}
-                            </span>
-                                    <span className="font-extrabold text-emerald-400">
-                              {pStat.wins}
-                            </span>
-                                  </div>
-                                  <div>
-                            <span className="text-[10px] uppercase text-slate-500 block font-semibold">
-                              {t.common.losses}
-                            </span>
-                                    <span className="font-extrabold text-red-400">
-                              {pStat.losses}
-                            </span>
-                                  </div>
-                                  <div>
-                            <span className="text-[10px] uppercase text-slate-500 block font-semibold">
-                              {t.common.draws}
-                            </span>
-                                    <span className="font-extrabold text-slate-400">
-                              {pStat.draws}
-                            </span>
-                                  </div>
-                                  <div>
-                            <span className="text-[10px] uppercase text-slate-500 block font-semibold">
-                              {t.common.winrate}
-                            </span>
-                                    <span className="font-black text-amber-400">
-                              {pStat.winRate}%
-                            </span>
-                                  </div>
-                                </div>
+                                {isSoloMode ? (
+                                    <div className="grid grid-cols-3 gap-3 bg-slate-950 px-4 py-2.5 rounded-xl border border-slate-800 text-center text-xs">
+                                      <div>
+                                      <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                        {language === 'it' ? 'Partite' : 'Matches'}
+                                      </span>
+                                        <span className="font-extrabold text-white">
+                                        {pStat.matchesPlayed}
+                                      </span>
+                                      </div>
+                                      <div>
+                                      <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                        {language === 'it' ? 'Ondata Max' : 'Max Wave'}
+                                      </span>
+                                        <span className="font-extrabold text-amber-400">
+                                        {pStat.maxWave || 1}
+                                      </span>
+                                      </div>
+                                      <div>
+                                      <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                        {language === 'it' ? 'Ondata Media' : 'Avg Wave'}
+                                      </span>
+                                        <span className="font-extrabold text-indigo-400">
+                                        {pStat.avgWave || 1}
+                                      </span>
+                                      </div>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-4 gap-3 bg-slate-950 px-4 py-2.5 rounded-xl border border-slate-800 text-center text-xs">
+                                      <div>
+                                      <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                        {t.common.wins}
+                                      </span>
+                                        <span className="font-extrabold text-emerald-400">
+                                        {pStat.wins}
+                                      </span>
+                                      </div>
+                                      <div>
+                                      <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                        {t.common.losses}
+                                      </span>
+                                        <span className="font-extrabold text-red-400">
+                                        {pStat.losses}
+                                      </span>
+                                      </div>
+                                      <div>
+                                      <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                        {t.common.draws}
+                                      </span>
+                                        <span className="font-extrabold text-slate-400">
+                                        {pStat.draws}
+                                      </span>
+                                      </div>
+                                      <div>
+                                      <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                        {t.common.winrate}
+                                      </span>
+                                        <span className="font-black text-amber-400">
+                                        {pStat.winRate}%
+                                      </span>
+                                      </div>
+                                    </div>
+                                )}
 
-                                {/* Winrate Bar */}
-                                <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                                  <div
-                                      className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 rounded-full transition-all"
-                                      style={{ width: `${Math.min(100, Math.max(0, pStat.winRate))}%` }}
-                                  />
-                                </div>
+                                {/* Winrate Bar or Wave Indicator */}
+                                {!isSoloMode && (
+                                    <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                                      <div
+                                          className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 rounded-full transition-all"
+                                          style={{ width: `${Math.min(100, Math.max(0, pStat.winRate))}%` }}
+                                      />
+                                    </div>
+                                )}
                               </div>
 
                               <div className="text-slate-400 p-2">
@@ -466,12 +542,25 @@ export const StatsView: React.FC<StatsViewProps> = ({
                                     {heroObj.name}
                                   </span>
                                               <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                                    <span>
-                                      {cDetail.wins}W - {cDetail.losses}L
-                                    </span>
-                                                <span className="font-bold text-amber-400 ml-auto">
-                                      {cDetail.winRate}%
-                                    </span>
+                                                {isSoloMode ? (
+                                                    <>
+                                                    <span>
+                                                      {language === 'it' ? `Max: Ondata ${cDetail.maxWave || 1}` : `Max: Wave ${cDetail.maxWave || 1}`}
+                                                    </span>
+                                                      <span className="font-bold text-amber-400 ml-auto">
+                                                      {language === 'it' ? `Media: ${cDetail.avgWave || 1}` : `Avg: ${cDetail.avgWave || 1}`}
+                                                    </span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                    <span>
+                                                      {cDetail.wins}W - {cDetail.losses}L
+                                                    </span>
+                                                      <span className="font-bold text-amber-400 ml-auto">
+                                                      {cDetail.winRate}%
+                                                    </span>
+                                                    </>
+                                                )}
                                               </div>
                                             </div>
                                           </div>
@@ -513,12 +602,25 @@ export const StatsView: React.FC<StatsViewProps> = ({
                                     {h1?.name || h1Id} & {h2?.name || h2Id}
                                   </span>
                                               <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                                    <span>
-                                      {compDetail.wins}W - {compDetail.losses}L
-                                    </span>
-                                                <span className="font-bold text-amber-400 ml-auto">
-                                      {compDetail.winRate}%
-                                    </span>
+                                                {isSoloMode ? (
+                                                    <>
+                                                    <span>
+                                                      {language === 'it' ? `Max: Ondata ${compDetail.maxWave || 1}` : `Max: Wave ${compDetail.maxWave || 1}`}
+                                                    </span>
+                                                      <span className="font-bold text-amber-400 ml-auto">
+                                                      {language === 'it' ? `Media: ${compDetail.avgWave || 1}` : `Avg: ${compDetail.avgWave || 1}`}
+                                                    </span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                    <span>
+                                                      {compDetail.wins}W - {compDetail.losses}L
+                                                    </span>
+                                                      <span className="font-bold text-amber-400 ml-auto">
+                                                      {compDetail.winRate}%
+                                                    </span>
+                                                    </>
+                                                )}
                                               </div>
                                             </div>
                                           </div>
@@ -579,48 +681,79 @@ export const StatsView: React.FC<StatsViewProps> = ({
                           </div>
 
                           <div className="space-y-2">
-                            <div className="grid grid-cols-4 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-center text-xs">
-                              <div>
-                        <span className="text-[10px] uppercase text-slate-500 block font-semibold">
-                          {t.common.matches}
-                        </span>
-                                <span className="font-extrabold text-white">
-                          {hStat.matchesPlayed}
-                        </span>
-                              </div>
-                              <div>
-                        <span className="text-[10px] uppercase text-slate-500 block font-semibold">
-                          {t.common.wins}
-                        </span>
-                                <span className="font-extrabold text-emerald-400">
-                          {hStat.wins}
-                        </span>
-                              </div>
-                              <div>
-                        <span className="text-[10px] uppercase text-slate-500 block font-semibold">
-                          {t.common.losses}
-                        </span>
-                                <span className="font-extrabold text-red-400">
-                          {hStat.losses}
-                        </span>
-                              </div>
-                              <div>
-                        <span className="text-[10px] uppercase text-slate-500 block font-semibold">
-                          {t.common.winrate}
-                        </span>
-                                <span className="font-black text-amber-400">
-                          {hStat.winRate}%
-                        </span>
-                              </div>
-                            </div>
+                            {isSoloMode ? (
+                                <div className="grid grid-cols-3 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-center text-xs">
+                                  <div>
+                                  <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                    {language === 'it' ? 'Partite' : 'Matches'}
+                                  </span>
+                                    <span className="font-extrabold text-white">
+                                    {hStat.matchesPlayed}
+                                  </span>
+                                  </div>
+                                  <div>
+                                  <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                    {language === 'it' ? 'Ondata Max' : 'Max Wave'}
+                                  </span>
+                                    <span className="font-extrabold text-amber-400">
+                                    {hStat.maxWave || 1}
+                                  </span>
+                                  </div>
+                                  <div>
+                                  <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                    {language === 'it' ? 'Ondata Media' : 'Avg Wave'}
+                                  </span>
+                                    <span className="font-extrabold text-indigo-400">
+                                    {hStat.avgWave || 1}
+                                  </span>
+                                  </div>
+                                </div>
+                            ) : (
+                                <>
+                                  <div className="grid grid-cols-4 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-center text-xs">
+                                    <div>
+                                    <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                      {t.common.matches}
+                                    </span>
+                                      <span className="font-extrabold text-white">
+                                      {hStat.matchesPlayed}
+                                    </span>
+                                    </div>
+                                    <div>
+                                    <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                      {t.common.wins}
+                                    </span>
+                                      <span className="font-extrabold text-emerald-400">
+                                      {hStat.wins}
+                                    </span>
+                                    </div>
+                                    <div>
+                                    <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                      {t.common.losses}
+                                    </span>
+                                      <span className="font-extrabold text-red-400">
+                                      {hStat.losses}
+                                    </span>
+                                    </div>
+                                    <div>
+                                    <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                      {t.common.winrate}
+                                    </span>
+                                      <span className="font-black text-amber-400">
+                                      {hStat.winRate}%
+                                    </span>
+                                    </div>
+                                  </div>
 
-                            {/* Progress bar */}
-                            <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                              <div
-                                  className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 rounded-full transition-all"
-                                  style={{ width: `${Math.min(100, Math.max(0, hStat.winRate))}%` }}
-                              />
-                            </div>
+                                  {/* Progress bar */}
+                                  <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 rounded-full transition-all"
+                                        style={{ width: `${Math.min(100, Math.max(0, hStat.winRate))}%` }}
+                                    />
+                                  </div>
+                                </>
+                            )}
                           </div>
                         </div>
                     );
@@ -656,48 +789,79 @@ export const StatsView: React.FC<StatsViewProps> = ({
                           </div>
 
                           <div className="space-y-2">
-                            <div className="grid grid-cols-4 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-center text-xs">
-                              <div>
-                        <span className="text-[10px] uppercase text-slate-500 block font-semibold">
-                          {t.common.matches}
-                        </span>
-                                <span className="font-extrabold text-white">
-                          {cStat.matchesPlayed}
-                        </span>
-                              </div>
-                              <div>
-                        <span className="text-[10px] uppercase text-slate-500 block font-semibold">
-                          {t.common.wins}
-                        </span>
-                                <span className="font-extrabold text-emerald-400">
-                          {cStat.wins}
-                        </span>
-                              </div>
-                              <div>
-                        <span className="text-[10px] uppercase text-slate-500 block font-semibold">
-                          {t.common.losses}
-                        </span>
-                                <span className="font-extrabold text-red-400">
-                          {cStat.losses}
-                        </span>
-                              </div>
-                              <div>
-                        <span className="text-[10px] uppercase text-slate-500 block font-semibold">
-                          {t.common.winrate}
-                        </span>
-                                <span className="font-black text-amber-400">
-                          {cStat.winRate}%
-                        </span>
-                              </div>
-                            </div>
+                            {isSoloMode ? (
+                                <div className="grid grid-cols-3 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-center text-xs">
+                                  <div>
+                                  <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                    {language === 'it' ? 'Partite' : 'Matches'}
+                                  </span>
+                                    <span className="font-extrabold text-white">
+                                    {cStat.matchesPlayed}
+                                  </span>
+                                  </div>
+                                  <div>
+                                  <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                    {language === 'it' ? 'Ondata Max' : 'Max Wave'}
+                                  </span>
+                                    <span className="font-extrabold text-amber-400">
+                                    {cStat.maxWave || 1}
+                                  </span>
+                                  </div>
+                                  <div>
+                                  <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                    {language === 'it' ? 'Ondata Media' : 'Avg Wave'}
+                                  </span>
+                                    <span className="font-extrabold text-indigo-400">
+                                    {cStat.avgWave || 1}
+                                  </span>
+                                  </div>
+                                </div>
+                            ) : (
+                                <>
+                                  <div className="grid grid-cols-4 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-center text-xs">
+                                    <div>
+                                    <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                      {t.common.matches}
+                                    </span>
+                                      <span className="font-extrabold text-white">
+                                      {cStat.matchesPlayed}
+                                    </span>
+                                    </div>
+                                    <div>
+                                    <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                      {t.common.wins}
+                                    </span>
+                                      <span className="font-extrabold text-emerald-400">
+                                      {cStat.wins}
+                                    </span>
+                                    </div>
+                                    <div>
+                                    <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                      {t.common.losses}
+                                    </span>
+                                      <span className="font-extrabold text-red-400">
+                                      {cStat.losses}
+                                    </span>
+                                    </div>
+                                    <div>
+                                    <span className="text-[10px] uppercase text-slate-500 block font-semibold">
+                                      {t.common.winrate}
+                                    </span>
+                                      <span className="font-black text-amber-400">
+                                      {cStat.winRate}%
+                                    </span>
+                                    </div>
+                                  </div>
 
-                            {/* Progress Bar */}
-                            <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                              <div
-                                  className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 rounded-full transition-all"
-                                  style={{ width: `${Math.min(100, Math.max(0, cStat.winRate))}%` }}
-                              />
-                            </div>
+                                  {/* Progress Bar */}
+                                  <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 rounded-full transition-all"
+                                        style={{ width: `${Math.min(100, Math.max(0, cStat.winRate))}%` }}
+                                    />
+                                  </div>
+                                </>
+                            )}
                           </div>
                         </div>
                     );

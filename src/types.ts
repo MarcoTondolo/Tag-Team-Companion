@@ -64,6 +64,7 @@ export interface Match {
   isVsAi?: boolean;
   aiDifficulty?: AiDifficulty;
   gameMode?: GameMode;
+  maxWave?: number;
 }
 
 export interface Player {
@@ -81,6 +82,10 @@ export interface PlayerStatDetail {
   losses: number;
   draws: number;
   winRate: number;
+  maxWave?: number;
+  avgWave?: number;
+  wavesSum?: number;
+  wavesCount?: number;
 }
 
 export interface PlayerStats {
@@ -91,6 +96,10 @@ export interface PlayerStats {
   losses: number;
   draws: number;
   winRate: number;
+  maxWave?: number;
+  avgWave?: number;
+  wavesSum?: number;
+  wavesCount?: number;
   byCharacter: Record<string, PlayerStatDetail>; // heroId -> stats
   byComposition: Record<string, PlayerStatDetail>; // compId -> stats
 }
@@ -103,6 +112,10 @@ export interface HeroStats {
   losses: number;
   draws: number;
   winRate: number;
+  maxWave?: number;
+  avgWave?: number;
+  wavesSum?: number;
+  wavesCount?: number;
 }
 
 export interface CompositionStats {
@@ -114,4 +127,8 @@ export interface CompositionStats {
   losses: number;
   draws: number;
   winRate: number;
+  maxWave?: number;
+  avgWave?: number;
+  wavesSum?: number;
+  wavesCount?: number;
 }
