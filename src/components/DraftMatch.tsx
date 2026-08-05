@@ -179,7 +179,7 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
 
   // Toggle selection for Team 1
   const toggleP1Hero = (heroId: string) => {
-    if (p2Heroes.includes(heroId)) return; // Cannot pick opponent's hero
+    if (matchMode !== 'vs_ai' && p2Heroes.includes(heroId)) return; // Cannot pick opponent's hero
 
     if (p1Heroes.includes(heroId)) {
       setP1Heroes(p1Heroes.filter((id) => id !== heroId));
@@ -632,7 +632,7 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
           )}
         </div>
 
-        {/* GUIDED SOLO DRAFT ASSISTANT */}
+        {/* GUIDED SOLO DRAFT ASSISTANT (MICHAEL KELLEY RULES) */}
         {matchMode === 'vs_ai' && soloDraftMethod === 'guided' && (
             <div className="bg-slate-900 border border-amber-500/30 rounded-3xl p-6 shadow-xl space-y-6 animate-fade-in">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -705,33 +705,33 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
                           {t.draft.autoFormPairs}
                         </button>
                         {matchMode === 'vs_ai' ? (
-                          <div className="flex gap-1.5">
-                            <button
-                                type="button"
-                                onClick={handleSelectPairA}
-                                disabled={pairAHeroes.length !== 2}
-                                className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-bold text-xs rounded-xl shadow transition-colors cursor-pointer"
-                            >
-                              {language === 'it' ? 'Scegli Coppia A' : 'Select Pair A'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleSelectPairB}
-                                disabled={pairBHeroes.length !== 2}
-                                className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-bold text-xs rounded-xl shadow transition-colors cursor-pointer"
-                            >
-                              {language === 'it' ? 'Scegli Coppia B' : 'Select Pair B'}
-                            </button>
-                          </div>
+                            <div className="flex gap-1.5">
+                              <button
+                                  type="button"
+                                  onClick={handleSelectPairA}
+                                  disabled={pairAHeroes.length !== 2}
+                                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-bold text-xs rounded-xl shadow transition-colors cursor-pointer"
+                              >
+                                {language === 'it' ? 'Scegli Coppia A' : 'Select Pair A'}
+                              </button>
+                              <button
+                                  type="button"
+                                  onClick={handleSelectPairB}
+                                  disabled={pairBHeroes.length !== 2}
+                                  className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-bold text-xs rounded-xl shadow transition-colors cursor-pointer"
+                              >
+                                {language === 'it' ? 'Scegli Coppia B' : 'Select Pair B'}
+                              </button>
+                            </div>
                         ) : (
-                          <button
-                              type="button"
-                              onClick={handleRandomPairAssignment}
-                              disabled={pairAHeroes.length !== 2 || pairBHeroes.length !== 2}
-                              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-bold text-xs rounded-xl shadow flex items-center gap-1.5 transition-colors cursor-pointer"
-                          >
-                            {t.draft.randomPairAssignment}
-                          </button>
+                            <button
+                                type="button"
+                                onClick={handleRandomPairAssignment}
+                                disabled={pairAHeroes.length !== 2 || pairBHeroes.length !== 2}
+                                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-bold text-xs rounded-xl shadow flex items-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              {t.draft.randomPairAssignment}
+                            </button>
                         )}
                       </div>
                     </div>
@@ -859,118 +859,118 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
             </div>
 
             {/* Interactive Hero Grid for Team 1 */}
-            {renderSingleHeroGrid(p1Heroes, p2Heroes, toggleP1Hero, 'blue')}
+            {renderSingleHeroGrid(p1Heroes, matchMode === 'vs_ai' ? [] : p2Heroes, toggleP1Hero, 'blue')}
           </div>
 
           {/* RIGHT COLUMN: TEAM 2 FOR 1V1/2V2 OR CIRCUITO CLANDESTINO INFO FOR VS_AI */}
           {matchMode === 'vs_ai' ? (
-            <div className="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2.5 border-b border-slate-800 pb-3">
-                  <div className="p-2 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-2xl border border-amber-500/30">
-                    <Flame className="w-6 h-6 text-orange-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-white">
-                      {language === 'it' ? 'Avversario: Il Threat Deck' : 'Opponent: Threat Deck'}
-                    </h3>
-                    <p className="text-xs text-amber-400 font-bold">
-                      {language === 'it' ? 'Nessun team avversario da pilotare' : 'No opponent team to control'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-xs text-slate-300 leading-relaxed">
-                  <p className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-300">
-                    {language === 'it'
-                      ? 'In modalità Circuito Clandestino non c\'è un secondo team di lottatori. Affronterai le 5 Ondate del Threat Deck (carte da gioco da 2 a 10 + Figure & Assi).'
-                      : 'In Underground Circuit mode there is no second fighter team. You face 5 Escalating Waves of the Threat Deck (standard rank cards 2-10 + Face cards & Aces).'}
-                  </p>
-
-                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl space-y-1.5">
-                    <span className="font-bold text-amber-400 block">{language === 'it' ? 'Regole Incontro:' : 'Match Rules:'}</span>
-                    <ul className="list-disc list-inside space-y-1 text-slate-400 text-[11px]">
-                      <li>{language === 'it' ? 'Scegli 2 lottatori per il TUO Tag Team' : 'Pick 2 fighters for YOUR Tag Team'}</li>
-                      <li>{language === 'it' ? 'Supera le 5 Ondate senza far andare KO entrambi i tuoi lottatori' : 'Survive 5 Waves without letting both your fighters go KO'}</li>
-                      <li>{language === 'it' ? 'Usa il Momentum per curarti e gestire le risorse tra le ondate' : 'Use Momentum to heal and manage resources between waves'}</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSoloRulesModal(true)}
-                  className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-amber-300 font-extrabold text-xs rounded-xl border border-amber-500/30 flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                >
-                  <BookOpen className="w-4 h-4 text-amber-400" />
-                  {language === 'it' ? 'Leggi Regolamento Solitario Completo' : 'Read Full Solo Rules'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-slate-900 border border-rose-900/50 rounded-3xl p-6 shadow-xl space-y-5">
-              <div className="flex flex-col gap-3 border-b border-rose-900/40 pb-3">
-                <h3 className="text-base font-extrabold text-rose-400 flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-rose-500 shadow-sm" />
-                  {matchMode === '2v2' ? t.draft.team2Red : t.draft.player2}
-                </h3>
-
-                {/* Player Selection Dropdowns */}
-                {matchMode === '2v2' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                          {language === 'it' ? 'Giocatore 2A' : 'Player 2A'}
-                        </label>
-                        <select
-                            value={p2aId}
-                            onChange={(e) => setP2aId(e.target.value)}
-                            className="w-full bg-slate-950 border border-rose-800/80 rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-rose-400 cursor-pointer"
-                        >
-                          {players.map((p) => (
-                              <option key={p.id} value={p.id} className="bg-slate-900">
-                                {p.name}
-                              </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                          {language === 'it' ? 'Giocatore 2B' : 'Player 2B'}
-                        </label>
-                        <select
-                            value={p2bId}
-                            onChange={(e) => setP2bId(e.target.value)}
-                            className="w-full bg-slate-950 border border-rose-800/80 rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-rose-400 cursor-pointer"
-                        >
-                          {players.map((p) => (
-                              <option key={p.id} value={p.id} className="bg-slate-900">
-                                {p.name}
-                              </option>
-                          ))}
-                        </select>
-                      </div>
+              <div className="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2.5 border-b border-slate-800 pb-3">
+                    <div className="p-2 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-2xl border border-amber-500/30">
+                      <Flame className="w-6 h-6 text-orange-400" />
                     </div>
-                ) : (
-                    <select
-                        value={player2Id}
-                        onChange={(e) => handlePlayer2Change(e.target.value)}
-                        className="bg-slate-950 border border-rose-800/80 rounded-xl px-3 py-1.5 text-sm font-bold text-white focus:outline-none focus:border-rose-400 cursor-pointer w-full"
-                    >
-                      {player2Options.map((p) => (
-                          <option key={p.id} value={p.id} className="bg-slate-900">
-                            {p.name}
-                          </option>
-                      ))}
-                    </select>
-                )}
-              </div>
+                    <div>
+                      <h3 className="text-base font-black text-white">
+                        {language === 'it' ? 'Avversario: Il Threat Deck' : 'Opponent: Threat Deck'}
+                      </h3>
+                      <p className="text-xs text-amber-400 font-bold">
+                        {language === 'it' ? 'Nessun team avversario da pilotare' : 'No opponent team to control'}
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Interactive Hero Grid for Team 2 */}
-              {renderSingleHeroGrid(p2Heroes, p1Heroes, toggleP2Hero, 'rose')}
-            </div>
+                  <div className="space-y-2 text-xs text-slate-300 leading-relaxed">
+                    <p className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-300">
+                      {language === 'it'
+                          ? 'In modalità Circuito Clandestino non c\'è un secondo team di lottatori. Affronterai le 5 Ondate del Threat Deck (carte da gioco da 2 a 10 + Figure & Assi).'
+                          : 'In Underground Circuit mode there is no second fighter team. You face 5 Escalating Waves of the Threat Deck (standard rank cards 2-10 + Face cards & Aces).'}
+                    </p>
+
+                    <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl space-y-1.5">
+                      <span className="font-bold text-amber-400 block">{language === 'it' ? 'Regole Incontro:' : 'Match Rules:'}</span>
+                      <ul className="list-disc list-inside space-y-1 text-slate-400 text-[11px]">
+                        <li>{language === 'it' ? 'Scegli 2 lottatori per il TUO Tag Team' : 'Pick 2 fighters for YOUR Tag Team'}</li>
+                        <li>{language === 'it' ? 'Supera le 5 Ondate senza far andare KO entrambi i tuoi lottatori' : 'Survive 5 Waves without letting both your fighters go KO'}</li>
+                        <li>{language === 'it' ? 'Usa il Momentum per curarti e gestire le risorse tra le ondate' : 'Use Momentum to heal and manage resources between waves'}</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                      type="button"
+                      onClick={() => setShowSoloRulesModal(true)}
+                      className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-amber-300 font-extrabold text-xs rounded-xl border border-amber-500/30 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <BookOpen className="w-4 h-4 text-amber-400" />
+                    {language === 'it' ? 'Leggi Regolamento Solitario Completo' : 'Read Full Solo Rules'}
+                  </button>
+                </div>
+              </div>
+          ) : (
+              <div className="bg-slate-900 border border-rose-900/50 rounded-3xl p-6 shadow-xl space-y-5">
+                <div className="flex flex-col gap-3 border-b border-rose-900/40 pb-3">
+                  <h3 className="text-base font-extrabold text-rose-400 flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-rose-500 shadow-sm" />
+                    {matchMode === '2v2' ? t.draft.team2Red : t.draft.player2}
+                  </h3>
+
+                  {/* Player Selection Dropdowns */}
+                  {matchMode === '2v2' ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                            {language === 'it' ? 'Giocatore 2A' : 'Player 2A'}
+                          </label>
+                          <select
+                              value={p2aId}
+                              onChange={(e) => setP2aId(e.target.value)}
+                              className="w-full bg-slate-950 border border-rose-800/80 rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-rose-400 cursor-pointer"
+                          >
+                            {players.map((p) => (
+                                <option key={p.id} value={p.id} className="bg-slate-900">
+                                  {p.name}
+                                </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                            {language === 'it' ? 'Giocatore 2B' : 'Player 2B'}
+                          </label>
+                          <select
+                              value={p2bId}
+                              onChange={(e) => setP2bId(e.target.value)}
+                              className="w-full bg-slate-950 border border-rose-800/80 rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-rose-400 cursor-pointer"
+                          >
+                            {players.map((p) => (
+                                <option key={p.id} value={p.id} className="bg-slate-900">
+                                  {p.name}
+                                </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                  ) : (
+                      <select
+                          value={player2Id}
+                          onChange={(e) => handlePlayer2Change(e.target.value)}
+                          className="bg-slate-950 border border-rose-800/80 rounded-xl px-3 py-1.5 text-sm font-bold text-white focus:outline-none focus:border-rose-400 cursor-pointer w-full"
+                      >
+                        {player2Options.map((p) => (
+                            <option key={p.id} value={p.id} className="bg-slate-900">
+                              {p.name}
+                            </option>
+                        ))}
+                      </select>
+                  )}
+                </div>
+
+                {/* Interactive Hero Grid for Team 2 */}
+                {renderSingleHeroGrid(p2Heroes, p1Heroes, toggleP2Hero, 'rose')}
+              </div>
           )}
         </div>
 
