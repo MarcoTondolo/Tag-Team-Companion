@@ -14,7 +14,7 @@ export interface Hero {
   avatarColor: string; // Tailwind color theme (e.g. 'amber', 'emerald', 'indigo', etc.)
   iconName: string;
   specialMechanic?: {
-    type: 'fey_folk' | 'bodvar_bear' | 'wild_bunch' | 'none';
+    type: 'fey_folk' | 'bodvar_bear' | 'wild_bunch' | 'excalibur' | 'green_knight' | 'none';
     description: {
       it: string;
       en: string;
@@ -39,6 +39,8 @@ export interface MatchHeroState {
   activeFeyMember?: 'elf' | 'gnome' | 'fairy' | null;
   feyFolkBonusesApplied?: { elf?: boolean; gnome?: boolean; fairy?: boolean };
   isBearForm?: boolean; // For Bodvar
+  isBrokenBlade?: boolean; // For Excalibur (immortal broken blade on KO)
+  customMaxHp?: number; // For The Green Knight (-1 max HP button)
 }
 
 export interface PlayerTeam {

@@ -242,6 +242,126 @@ export const HEROES: Hero[] = [
       },
     },
   },
+  {
+    id: 'dragon',
+    name: 'Dragon',
+    title: {
+      it: 'Il Drago Antico',
+      en: 'The Ancient Dragon',
+    },
+    startingHp: 20,
+    startingPower: 2,
+    maxHp: 20,
+    avatarColor: 'red',
+    iconName: 'flame',
+    specialMechanic: {
+      type: 'none',
+      description: {
+        it: 'Scaglie Draconiche: Colosso con 20 HP. Usa le scaglie come risorsa difensiva per mitigare i colpi e scatenare fiamme devastanti.',
+        en: 'Dragon Scales: Juggernaut starting with 20 HP. Discards scales to absorb damage and empower fiery attacks.',
+      },
+    },
+  },
+  {
+    id: 'excalibur',
+    name: 'Excalibur',
+    title: {
+      it: 'La Spada nella Roccia',
+      en: 'The Sword in the Stone',
+    },
+    startingHp: 7,
+    startingPower: 0,
+    maxHp: 7,
+    avatarColor: 'yellow',
+    iconName: 'sword',
+    specialMechanic: {
+      type: 'excalibur',
+      description: {
+        it: 'Lama Spezzata (Immortale): Quando va KO a 0 HP, si trasforma in The Broken Blade e diventa immortale!',
+        en: 'The Broken Blade (Immortal): When reduced to 0 HP, transforms into The Broken Blade and becomes immortal!',
+      },
+    },
+  },
+  {
+    id: 'green_knight',
+    name: 'The Green Knight',
+    title: {
+      it: 'Il Cavaliere Verde',
+      en: 'The Green Knight',
+    },
+    startingHp: 14,
+    startingPower: 1,
+    maxHp: 14,
+    avatarColor: 'emerald',
+    iconName: 'shield',
+    specialMechanic: {
+      type: 'green_knight',
+      description: {
+        it: 'Sfida Cavalleresca: Le sue abilità riducono i suoi Max HP di 1 alla volta aumentando la sua ferocia.',
+        en: 'Chivalric Trial: His combat abilities permanently reduce his Max HP by 1 at a time.',
+      },
+    },
+  },
+  {
+    id: 'merlin',
+    name: 'Merlin',
+    title: {
+      it: 'L\'Arcimago di Camelot',
+      en: 'The Archmage of Camelot',
+    },
+    startingHp: 14,
+    startingPower: 2,
+    maxHp: 14,
+    avatarColor: 'indigo',
+    iconName: 'sparkles',
+    specialMechanic: {
+      type: 'none',
+      description: {
+        it: 'Albero delle Abilità: Potenzia gradualmente le sue magie (attacchi, parate e cure) creando potenti combinazioni a catena.',
+        en: 'Skill Tree: Gradually enhances his spells (attacks, blocks, heals) into devastating late-game chains.',
+      },
+    },
+  },
+  {
+    id: 'morgan',
+    name: 'Morgan',
+    title: {
+      it: 'L\'Incantatrice Fatata',
+      en: 'The Fae Sorceress',
+    },
+    startingHp: 15,
+    startingPower: 1,
+    maxHp: 15,
+    avatarColor: 'purple',
+    iconName: 'sparkle',
+    specialMechanic: {
+      type: 'none',
+      description: {
+        it: 'Preveggenza: Vede le carte scelte dall\'avversario ed è specializzata in potenti contromisure e hard-counter.',
+        en: 'Foresight: Peeks at opponent choices and punishes them with devastating hard-counters.',
+      },
+    },
+  },
+  {
+    id: 'perceval',
+    name: 'Perceval',
+    title: {
+      it: 'Cavaliere della Tavola Rotonda',
+      en: 'Knight of the Round Table',
+    },
+    startingHp: 15,
+    startingPower: 0,
+    maxHp: 15,
+    avatarColor: 'cyan',
+    iconName: 'sword',
+    specialMechanic: {
+      type: 'none',
+      description: {
+        it: 'Attacchi a Catena: Infligge danno devastante sommando il Potere al numero di sue carte giocate nel turno.',
+        en: 'Chain Attacks: Attacks deal damage scaling with his Power plus the number of his cards played.',
+      },
+    },
+  },
 ];
 
 export function getHeroById(id: string): Hero | undefined {

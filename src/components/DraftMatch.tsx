@@ -231,6 +231,28 @@ export const DraftMatch: React.FC<DraftMatchProps> = ({
         };
       }
 
+      if (hero.id === 'green_knight') {
+        return {
+          heroId,
+          image,
+          currentHp: hero.startingHp,
+          currentPower: hero.startingPower,
+          isKo: false,
+          customMaxHp: hero.maxHp,
+        };
+      }
+
+      if (hero.id === 'excalibur') {
+        return {
+          heroId,
+          image,
+          currentHp: hero.startingHp,
+          currentPower: hero.startingPower,
+          isKo: false,
+          isBrokenBlade: false,
+        };
+      }
+
       return {
         heroId,
         image,

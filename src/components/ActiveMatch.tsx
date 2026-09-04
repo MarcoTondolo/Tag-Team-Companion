@@ -99,9 +99,20 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
     }
   }, [team1, team2, feyModalState, isVsAi]);
 
+  // Helper to determine if a hero is defeated for team loss:
+  // Mortal heroes are defeated when isKo is true.
+  // Excalibur transforms into The Broken Blade when reaching 0 HP and becomes immortal.
+  // For team defeat check: when Excalibur is broken, it counts towards team loss if ally is also defeated.
+  const isHeroDefeated = (h: MatchHeroState) => {
+    if (h.heroId === 'excalibur') {
+      return !!h.isBrokenBlade || h.isKo;
+    }
+    return h.isKo;
+  };
+
   // Check if both heroes in a team are KO
-  const isTeam1AllKo = team1.heroes.length > 0 && team1.heroes.every((h) => h.isKo);
-  const isTeam2AllKo = team2.heroes.length > 0 && team2.heroes.every((h) => h.isKo);
+  const isTeam1AllKo = team1.heroes.length > 0 && team1.heroes.every(isHeroDefeated);
+  const isTeam2AllKo = team2.heroes.length > 0 && team2.heroes.every(isHeroDefeated);
 
   useEffect(() => {
     if (isVsAi || team2.playerId === 'threat_deck') {
@@ -147,12 +158,24 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
       const newHeroes = [...prevTeam.heroes];
       const updated = updater(newHeroes[heroIndex]);
 
-      // Check Fey Folk KO logic
-      if (updated.heroId === 'fey_folk' && updated.feyFolkHp) {
+      // Check Excalibur broken blade transformation logic
+      if (updated.heroId === 'excalibur') {
+        if (updated.isBrokenBlade) {
+          updated.isKo = false; // Excalibur becomes immortal in Broken Blade form!
+          updated.currentHp = 0;
+        } else if (updated.currentHp <= 0) {
+          // Reached 0 HP: transforms into The Broken Blade and becomes immortal!
+          updated.isBrokenBlade = true;
+          updated.isKo = false;
+          updated.currentHp = 0;
+        } else {
+          updated.isKo = false;
+        }
+      } else if (updated.heroId === 'fey_folk' && updated.feyFolkHp) {
         const totalFeyHp =
             updated.feyFolkHp.elf + updated.feyFolkHp.gnome + updated.feyFolkHp.fairy;
         updated.isKo = totalFeyHp <= 0;
-      } else if (updated.heroId !== 'fey_folk') {
+      } else {
         updated.isKo = updated.currentHp <= 0;
       }
 
@@ -315,10 +338,18 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
 
     // Regular hero HP change
     updateHero(teamNumber, heroIndex, (h) => {
+      // Excalibur in Broken Blade form cannot take or change HP
+      if (h.heroId === 'excalibur' && h.isBrokenBlade) {
+        return h;
+      }
       const heroData = getHeroById(h.heroId);
       const maxHpCap = heroData?.maxHp || 99;
+      const effectiveMaxHp =
+          h.heroId === 'green_knight' && h.customMaxHp !== undefined
+              ? h.customMaxHp
+              : maxHpCap;
       const newHp = Math.max(0, h.currentHp + delta);
-      const maxLimit = h.heroId === 'bodvar' && h.isBearForm ? 15 : maxHpCap;
+      const maxLimit = h.heroId === 'bodvar' && h.isBearForm ? 15 : effectiveMaxHp;
       const cappedHp = Math.min(maxLimit, newHp);
 
       return { ...h, currentHp: cappedHp };
@@ -343,6 +374,59 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
         currentHp: newHp,
         isBearForm: true,
         image: `${import.meta.env.BASE_URL}heroes/bodvar_bear.png`,
+      };
+    });
+  };
+
+  // Excalibur Broken Blade transformation (Immortal)
+  const handleTransformExcalibur = (teamNumber: 1 | 2, heroIndex: number) => {
+    updateHero(teamNumber, heroIndex, (hero) => ({
+      ...hero,
+      isBrokenBlade: true,
+      isKo: false, // Immortal!
+      currentHp: 0,
+      image: `${import.meta.env.BASE_URL}heroes/excalibur_broken.png`,
+    }));
+  };
+
+  const handleRestoreExcalibur = (teamNumber: 1 | 2, heroIndex: number) => {
+    updateHero(teamNumber, heroIndex, (hero) => {
+      const heroData = getHeroById('excalibur');
+      return {
+        ...hero,
+        isBrokenBlade: false,
+        isKo: false,
+        currentHp: heroData?.startingHp ?? 7,
+        image: `${import.meta.env.BASE_URL}heroes/excalibur.png`,
+      };
+    });
+  };
+
+  // The Green Knight -1 Max HP button
+  const handleReduceGreenKnightMaxHp = (teamNumber: 1 | 2, heroIndex: number) => {
+    updateHero(teamNumber, heroIndex, (hero) => {
+      const heroData = getHeroById(hero.heroId);
+      const currentMax = hero.customMaxHp ?? heroData?.maxHp ?? 18;
+      const newMax = Math.max(1, currentMax - 1);
+      const newCurrentHp = Math.min(newMax, hero.currentHp);
+      return {
+        ...hero,
+        customMaxHp: newMax,
+        currentHp: newCurrentHp,
+      };
+    });
+  };
+
+  const handleIncreaseGreenKnightMaxHp = (teamNumber: 1 | 2, heroIndex: number) => {
+    updateHero(teamNumber, heroIndex, (hero) => {
+      const heroData = getHeroById(hero.heroId);
+      const baseMax = heroData?.maxHp ?? 18;
+      const currentMax = hero.customMaxHp ?? baseMax;
+      const newMax = Math.min(baseMax, currentMax + 1);
+      return {
+        ...hero,
+        customMaxHp: newMax,
+        currentHp: newMax,
       };
     });
   };
@@ -386,10 +470,18 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
 
     const isBodvar = heroData.id === 'bodvar';
     const isFeyFolk = heroData.id === 'fey_folk';
+    const isExcalibur = heroData.id === 'excalibur';
+    const isGreenKnight = heroData.id === 'green_knight';
 
-    // Calculate Fey Folk member max HP and badge
+    // Calculate member max HP and badge
     let activeMemberLabel = '';
-    let maxHpVal = heroState.isBearForm ? 15 : heroData.maxHp;
+    let maxHpVal = heroState.isBearForm
+        ? 15
+        : isGreenKnight
+            ? (heroState.customMaxHp ?? heroData.maxHp)
+            : isExcalibur && heroState.isBrokenBlade
+                ? 0
+                : heroData.maxHp;
 
     if (isFeyFolk) {
       if (heroState.activeFeyMember === 'elf') {
@@ -417,9 +509,19 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
           {/* Header: Avatar, Name & Action Button underneath */}
           <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-800/80">
             <div className="flex items-center gap-2.5 min-w-0">
-              <FighterAvatar heroId={heroData.id} image={heroState.image} size="md" isKo={heroState.isKo} />
+              <FighterAvatar
+                  heroId={heroData.id}
+                  image={heroState.image}
+                  size="md"
+                  isKo={heroState.isKo}
+                  isBrokenBlade={heroState.isBrokenBlade}
+              />
               <div className="min-w-0 flex flex-col justify-center">
-                <h4 className="font-extrabold text-white text-xs sm:text-sm truncate">{heroData.name}</h4>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h4 className="font-extrabold text-white text-xs sm:text-sm truncate">
+                    {isExcalibur && heroState.isBrokenBlade ? 'The Broken Blade' : heroData.name}
+                  </h4>
+                </div>
                 {isBodvar && (
                     <button
                         onClick={() => handleBodvarTransform(teamNumber, heroIndex)}
@@ -445,6 +547,50 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                       <span>{activeMemberLabel}</span>
                     </button>
                 )}
+                {isExcalibur && (
+                    <div className="flex items-center gap-1 mt-1">
+                      {!heroState.isBrokenBlade ? (
+                          <button
+                              onClick={() => handleTransformExcalibur(teamNumber, heroIndex)}
+                              className="px-2 py-0.5 text-[10px] font-bold rounded-md border flex items-center gap-1 cursor-pointer transition-all bg-yellow-950/80 hover:bg-yellow-900 text-yellow-300 border-yellow-700/60 shadow-sm active:scale-95"
+                              title={language === 'it' ? 'Spezza Excalibur in The Broken Blade (Immortale)' : 'Break Excalibur into The Broken Blade (Immortal)'}
+                          >
+                            <span>{language === 'it' ? 'Spezza' : 'Break'}</span>
+                          </button>
+                      ) : (
+                          <button
+                              onClick={() => handleRestoreExcalibur(teamNumber, heroIndex)}
+                              className="px-1.5 py-0.5 text-[9px] font-bold rounded-md border flex items-center gap-1 cursor-pointer transition-all bg-slate-900 hover:bg-slate-800 text-slate-400 border-slate-700 active:scale-95"
+                              title={language === 'it' ? 'Ripristina Excalibur' : 'Restore Excalibur'}
+                          >
+                            <span>🔄</span>
+                            <span>{language === 'it' ? 'Ripristina' : 'Restore'}</span>
+                          </button>
+                      )}
+                    </div>
+                )}
+                {isGreenKnight && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <button
+                          onClick={() => handleReduceGreenKnightMaxHp(teamNumber, heroIndex)}
+                          className="px-0 py-0.5 text-[10px] font-bold rounded-md border flex items-center gap-1 cursor-pointer transition-all bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 border-emerald-700/80 shadow-sm active:scale-95"
+                          title={language === 'it' ? 'Riduci Max HP di 1 alla volta' : 'Reduce Max HP by 1 at a time'}
+                      >
+                        <img
+                            src={`${import.meta.env.BASE_URL}misc/green_knight_token.png`}
+                            alt="token"
+                            className="w-6 h-6 object-contain"
+                        />
+                      </button>
+                      <button
+                          onClick={() => handleIncreaseGreenKnightMaxHp(teamNumber, heroIndex)}
+                          className="px-0 py-0.5 text-[10px] font-bold rounded-md border flex items-center justify-center cursor-pointer transition-all bg-slate-900 hover:bg-slate-800 text-slate-400 border-slate-700 active:scale-95"
+                          title="+1 Max HP (Annulla riduzione)"
+                      >
+                        <Plus className="w-6 h-6" />
+                      </button>
+                    </div>
+                )}
               </div>
             </div>
           </div>
@@ -452,33 +598,45 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
           {/* Standard 2-Container Grid (HP + POWER) for ALL fighters */}
           <div className="grid grid-cols-2 gap-2">
             {/* HP TRACKER CONTAINER */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center justify-between gap-1.5">
-              {/* Heart Icon + HP Counter */}
-              <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-white">
-                <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500 shrink-0" />
-                <span>{heroState.currentHp}</span>
-                <span className="text-[10px] text-slate-500 font-semibold">
-                /{maxHpVal}
-              </span>
-              </div>
+            <div className={`border rounded-lg p-2 flex flex-col items-center justify-between gap-1.5 ${
+                heroState.isBrokenBlade ? 'border-yellow-600/50 bg-yellow-950/25' : 'bg-slate-900/90 border-slate-800'
+            }`}>
+              {heroState.isBrokenBlade ? (
+                  <div className="flex flex-col items-center justify-center text-center py-2 h-full">
+                    <span className="text-[10px] font-extrabold text-amber-400 tracking-wider mt-0.5">
+                    ♾️
+                  </span>
+                  </div>
+              ) : (
+                  <>
+                    {/* Heart Icon + HP Counter */}
+                    <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-black text-white">
+                      <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500 shrink-0" />
+                      <span>{heroState.currentHp}</span>
+                      <span className="text-[10px] text-slate-500 font-semibold">
+                      /{maxHpVal}
+                    </span>
+                    </div>
 
-              {/* Stacked HP Buttons */}
-              <div className="flex flex-col items-center gap-1 w-full">
-                <button
-                    onClick={() => changeHp(teamNumber, heroIndex, 1)}
-                    className="w-full py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold rounded border border-emerald-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                    title="+1 HP"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-                <button
-                    onClick={() => changeHp(teamNumber, heroIndex, -1)}
-                    className="w-full py-1 bg-red-950/80 hover:bg-red-900 text-red-300 font-bold rounded border border-red-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                    title="-1 HP"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
-              </div>
+                    {/* Stacked HP Buttons */}
+                    <div className="flex flex-col items-center gap-1 w-full">
+                      <button
+                          onClick={() => changeHp(teamNumber, heroIndex, 1)}
+                          className="w-full py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold rounded border border-emerald-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                          title="+1 HP"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                          onClick={() => changeHp(teamNumber, heroIndex, -1)}
+                          className="w-full py-1 bg-red-950/80 hover:bg-red-900 text-red-300 font-bold rounded border border-red-800/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                          title="-1 HP"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </>
+              )}
             </div>
 
             {/* POWER TRACKER CONTAINER */}
