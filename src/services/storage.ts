@@ -55,11 +55,19 @@ export const StorageService = {
     }
   },
 
-  addPlayer(name: string): Player {
+  addPlayer(name: string): Player | null {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
     const players = this.getPlayers();
+    const isDuplicate = players.some(
+        (p) => p.name.trim().toLowerCase() === trimmed.toLowerCase()
+    );
+    if (isDuplicate) {
+      return null;
+    }
     const newPlayer: Player = {
       id: 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-      name: name.trim(),
+      name: trimmed,
       createdAt: new Date().toISOString(),
     };
     players.push(newPlayer);
