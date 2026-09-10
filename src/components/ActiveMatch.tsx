@@ -6,11 +6,10 @@ import {
   RotateCcw,
   Flag,
   Award,
-  Sparkles,
   X,
   Plus,
   Minus,
-  Check,
+
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { PlayerTeam, MatchHeroState, Match, Language, AiDifficulty, GameMode } from '../types';
@@ -104,33 +103,29 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
   // Excalibur transforms into The Broken Blade when reaching 0 HP and becomes immortal.
   // For team defeat check: when Excalibur is broken, it counts towards team loss if ally is also defeated.
   const isHeroDefeated = (h: MatchHeroState) => {
-    if (h.heroId === 'excalibur') {
-      return !!h.isBrokenBlade || h.isKo;
-    }
     return h.isKo;
   };
 
   // Check if both heroes in a team are KO
-  const isTeam1AllKo = team1.heroes.length > 0 && team1.heroes.every(isHeroDefeated);
-  const isTeam2AllKo = team2.heroes.length > 0 && team2.heroes.every(isHeroDefeated);
+  const isTeam1Ko = team1.heroes.some(isHeroDefeated);
+  const isTeam2Ko = team2.heroes.some(isHeroDefeated);
 
   useEffect(() => {
     if (isVsAi || team2.playerId === 'threat_deck') {
-      if (isTeam1AllKo) {
-        // Player defeated in Circuito Clandestino
+      if (isTeam1Ko) {
         triggerWinnerModal(null, false);
       }
       return;
     }
 
-    if (isTeam1AllKo && isTeam2AllKo) {
+    if (isTeam1Ko && isTeam2Ko) {
       triggerWinnerModal(null, true);
-    } else if (isTeam1AllKo) {
+    } else if (isTeam1Ko) {
       triggerWinnerModal(team2.playerId, false);
-    } else if (isTeam2AllKo) {
+    } else if (isTeam2Ko) {
       triggerWinnerModal(team1.playerId, false);
     }
-  }, [isTeam1AllKo, isTeam2AllKo, isVsAi, team2.playerId]);
+  }, [isTeam1Ko, isTeam2Ko, isVsAi, team2.playerId]);
 
   const triggerWinnerModal = (winnerPlayerId: string | null, isDraw: boolean, finalWave?: number) => {
     setWinnerModal({ isOpen: true, winnerPlayerId, isDraw, finalWave: finalWave || currentWave });
@@ -156,31 +151,43 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
     const setTeam = teamNumber === 1 ? setTeam1 : setTeam2;
     setTeam((prevTeam) => {
       const newHeroes = [...prevTeam.heroes];
-      const updated = updater(newHeroes[heroIndex]);
+      const updated = updater({ ...newHeroes[heroIndex] });
 
       // Check Excalibur broken blade transformation logic
       if (updated.heroId === 'excalibur') {
         if (updated.isBrokenBlade) {
           updated.isKo = false; // Excalibur becomes immortal in Broken Blade form!
           updated.currentHp = 0;
+          updated.image = `${import.meta.env.BASE_URL}heroes/excalibur_broken.png`;
         } else if (updated.currentHp <= 0) {
           // Reached 0 HP: transforms into The Broken Blade and becomes immortal!
           updated.isBrokenBlade = true;
           updated.isKo = false;
           updated.currentHp = 0;
+          updated.image = `${import.meta.env.BASE_URL}heroes/excalibur_broken.png`;
         } else {
           updated.isKo = false;
+          updated.image = `${import.meta.env.BASE_URL}heroes/excalibur.png`;
         }
       } else if (updated.heroId === 'fey_folk' && updated.feyFolkHp) {
         const totalFeyHp =
-            updated.feyFolkHp.elf + updated.feyFolkHp.gnome + updated.feyFolkHp.fairy;
+            updated.feyFolkHp.elf +
+            updated.feyFolkHp.gnome +
+            updated.feyFolkHp.fairy;
+
         updated.isKo = totalFeyHp <= 0;
+
+        // Normal heroes
       } else {
         updated.isKo = updated.currentHp <= 0;
       }
 
       newHeroes[heroIndex] = updated;
-      return { ...prevTeam, heroes: newHeroes };
+
+      return {
+        ...prevTeam,
+        heroes: newHeroes,
+      };
     });
   };
 
@@ -806,7 +813,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                 </span>
                   <h3 className="text-base sm:text-lg font-black text-white">{team1.playerName}</h3>
                 </div>
-                {isTeam1AllKo && (
+                {isTeam1Ko && (
                     <span className="px-2.5 py-0.5 bg-red-950 text-red-400 border border-red-800 text-[11px] font-bold rounded-lg">
                   {t.activeMatch.allKo}
                 </span>
@@ -829,7 +836,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                   </span>
                     <h3 className="text-base sm:text-lg font-black text-white">{team1.playerName}</h3>
                   </div>
-                  {isTeam1AllKo && (
+                  {isTeam1Ko && (
                       <span className="px-2.5 py-0.5 bg-red-950 text-red-400 border border-red-800 text-[11px] font-bold rounded-lg">
                     {t.activeMatch.allKo}
                   </span>
@@ -850,7 +857,7 @@ export const ActiveMatch: React.FC<ActiveMatchProps> = ({
                   </span>
                     <h3 className="text-base sm:text-lg font-black text-white">{team2.playerName}</h3>
                   </div>
-                  {isTeam2AllKo && (
+                  {isTeam2Ko && (
                       <span className="px-2.5 py-0.5 bg-red-950 text-red-400 border border-red-800 text-[11px] font-bold rounded-lg">
                     {t.activeMatch.allKo}
                   </span>
