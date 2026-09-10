@@ -352,7 +352,7 @@
       return (
           <div className="max-w-md mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-4 shadow-xl">
             <AlertCircle className="w-12 h-12 text-amber-400 mx-auto" />
-            <h2 className="text-xl font-bold text-white">Crea due profili per iniziare</h2>
+            <h2 className="text-xl font-bold text-white">{t.draft.create2Players}</h2>
             <form onSubmit={handleQuickAdd} className="flex gap-2 pt-2">
               <input
                   type="text"
@@ -387,7 +387,7 @@
       return (
           <div className="max-w-md mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-4 shadow-xl">
             <AlertCircle className="w-12 h-12 text-amber-400 mx-auto" />
-            <h2 className="text-xl font-bold text-white">Crea un profilo per iniziare</h2>
+            <h2 className="text-xl font-bold text-white">{t.draft.create1Player}</h2>
             <form onSubmit={handleQuickAdd} className="flex gap-2 pt-2">
               <input
                   type="text"
